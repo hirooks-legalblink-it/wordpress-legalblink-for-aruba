@@ -31,7 +31,6 @@ return array(
         /**
          * LegalBlink API Bearer Token
          * IMPORTANT: Keep this secret! Never commit this file with real credentials.
-         * Get your token from: https://app.legalblink.it/settings/integrations
          */
         'bearer_token' => 'your-api-token-here',
 

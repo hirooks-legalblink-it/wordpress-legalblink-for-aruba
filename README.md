@@ -39,10 +39,6 @@ Official WordPress plugin for integrating LegalBlink services by Aruba into your
 3. Upload the `.zip` file and click **Install Now**
 4. Activate the plugin
 
-### From Source (Developers)
-
-See the [Developer Documentation](#-for-developers) section below.
-
 ## ⚙️ Configuration
 
 1. Get your LegalBlink token from [https://app.legalblink.it/login](https://app.legalblink.it/login)
@@ -147,12 +143,6 @@ cd admin-ui
 npm run dev
 ```
 
-### 📚 Documentation
-
-- **Developer Guide**: [`plugin/legalblink-for-aruba/README-DEVELOPERS.md`](./plugin/legalblink-for-aruba/README-DEVELOPERS.md)
-- **Admin UI README**: [`admin-ui/README.md`](./admin-ui/README.md)
-- **Build Script**: [`build.sh`](./build.sh) - Self-documented
-
 ### 🧰 Tech Stack
 
 **Frontend (Admin UI)**:
@@ -172,7 +162,6 @@ npm run dev
 All third-party libraries and their licenses are documented in:
 - [`admin-ui/package.json`](./admin-ui/package.json) - npm dependencies
 - [`plugin/legalblink-for-aruba/composer.json`](./plugin/legalblink-for-aruba/composer.json) - PHP dependencies
-- [`plugin/legalblink-for-aruba/README-DEVELOPERS.md`](./plugin/legalblink-for-aruba/README-DEVELOPERS.md) - Full list with licenses
 
 All frontend libraries are MIT licensed and compatible with the plugin's GPLv3 license.
 
@@ -213,7 +202,6 @@ Please ensure:
 
 ## 🐛 Bug Reports & Support
 
-- **WordPress.org Support**: [Plugin Support Forum](https://wordpress.org/support/plugin/legalblink-for-aruba/)
 - **GitHub Issues**: [Report a bug](https://github.com/hirooks-legalblink-it/wordpress-legalblink-for-aruba/issues)
 - **LegalBlink Support**: [Mail us](mailto:legalblink@legalblink.it)
 
@@ -246,5 +234,5 @@ legalblink-plugin-wp-refactor/
 
 ---
 
-**Important**: This plugin complies with WordPress.org guidelines by providing full access to human-readable source code for all compiled assets. See the [Developer Documentation](#-for-developers) section for details.
+**Important**: This plugin complies with WordPress.org guidelines by providing full access to human-readable source code for all compiled assets.
 
