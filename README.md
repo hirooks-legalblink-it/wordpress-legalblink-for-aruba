@@ -108,7 +108,7 @@ The complete source code is available in this repository:
 ```bash
 # Clone the repository
 git clone https://github.com/hirooks-legalblink-it/wordpress-legalblink-for-aruba.git
-cd legalblink-plugin-wp-refactor
+cd wordpress-legalblink-for-aruba
 
 # Build everything (automated)
 chmod +x build.sh
@@ -208,7 +208,7 @@ Please ensure:
 ## 🗂️ Project Structure
 
 ```
-legalblink-plugin-wp-refactor/
+wordpress-legalblink-for-aruba/
 ├── README.md                           # This file
 ├── build.sh                            # Build script
 ├── admin-ui/                           # Vue 3 Admin Interface (SOURCE)
