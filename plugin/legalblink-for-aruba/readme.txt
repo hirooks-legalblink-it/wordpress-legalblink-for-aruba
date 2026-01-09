@@ -126,4 +126,4 @@ This plugin connects to the LegalBlink API to:
 
 This plugin uses compiled JavaScript and CSS for the admin interface. The human-readable source code is available in the project repository:
 
-**Repository**: [https://legalblink.it/](https://legalblink.it/)
+**Repository**: [https://github.com/hirooks-legalblink-it/wordpress-legalblink-for-aruba/](https://github.com/hirooks-legalblink-it/wordpress-legalblink-for-aruba/)
