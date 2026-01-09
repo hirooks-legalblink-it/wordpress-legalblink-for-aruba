@@ -17,21 +17,21 @@ if (!class_exists('LBFA_Document_API_Controller')) {
         public function register_routes()
         {
             // Get all documents
-            register_rest_route(self::API_NAMESPACE, '/documents', array(
+            register_rest_route(self::get_api_namespace(), '/documents', array(
                 'methods' => 'GET',
                 'callback' => array($this, 'get_documents'),
                 'permission_callback' => array($this, 'check_admin_permissions_with_nonce')
             ));
 
             // Get WordPress pages
-            register_rest_route(self::API_NAMESPACE, '/pages', array(
+            register_rest_route(self::get_api_namespace(), '/pages', array(
                 'methods' => 'GET',
                 'callback' => array($this, 'get_wordpress_pages'),
                 'permission_callback' => array($this, 'check_admin_permissions_with_nonce')
             ));
 
             // Update page content with policy
-            register_rest_route(self::API_NAMESPACE, '/documents/update-page', array(
+            register_rest_route(self::get_api_namespace(), '/documents/update-page', array(
                 'methods' => 'POST',
                 'callback' => array($this, 'update_page_content'),
                 'permission_callback' => array($this, 'check_admin_permissions_with_nonce'),

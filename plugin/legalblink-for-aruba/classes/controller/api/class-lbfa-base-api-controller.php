@@ -62,13 +62,6 @@ if (!class_exists('LBFA_Base_API_Controller')) {
         }
 
         /**
-         * Legacy constant for backwards compatibility
-         * @deprecated Use get_api_namespace() instead
-         */
-        const API_NAMESPACE = 'lbfa/v1';
-
-
-        /**
          * Create standardized API response
          *
          * @param bool $success Whether the operation was successful

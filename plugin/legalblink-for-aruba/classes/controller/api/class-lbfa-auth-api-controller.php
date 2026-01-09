@@ -17,14 +17,14 @@ if (!class_exists('LBFA_Auth_API_Controller')) {
         public function register_routes()
         {
             // Verify user authentication
-            register_rest_route(self::API_NAMESPACE, '/auth/verify', array(
+            register_rest_route(self::get_api_namespace(), '/auth/verify', array(
                 'methods' => 'GET',
                 'callback' => array($this, 'is_logged_in'),
                 'permission_callback' => array($this, 'check_admin_permissions_with_nonce')
             ));
 
             // Login user
-            register_rest_route(self::API_NAMESPACE, '/auth/login', array(
+            register_rest_route(self::get_api_namespace(), '/auth/login', array(
                 'methods' => 'POST',
                 'callback' => array($this, 'login'),
                 'permission_callback' => array($this, 'check_admin_permissions_with_nonce'),
@@ -37,7 +37,7 @@ if (!class_exists('LBFA_Auth_API_Controller')) {
             ));
 
             // Logout user
-            register_rest_route(self::API_NAMESPACE, '/auth/logout', array(
+            register_rest_route(self::get_api_namespace(), '/auth/logout', array(
                 'methods' => 'POST',
                 'callback' => array($this, 'logout'),
                 'permission_callback' => array($this, 'check_admin_permissions_with_nonce')
@@ -62,7 +62,7 @@ if (!class_exists('LBFA_Auth_API_Controller')) {
                     );
                 }
 
-                $url = self::API_BASE_URL . '/users/me';
+                $url = self::get_api_base_url() . '/users/me';
                 $response = wp_remote_get($url, array(
                     'headers' => array(
                         'Content-Type' => 'application/json',

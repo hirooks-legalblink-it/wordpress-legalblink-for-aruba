@@ -17,14 +17,14 @@ if (!class_exists('LBFA_Cache_API_Controller')) {
         public function register_routes()
         {
             // Clear cache endpoint
-            register_rest_route(self::API_NAMESPACE, '/cache/clear', array(
+            register_rest_route(self::get_api_namespace(), '/cache/clear', array(
                 'methods' => 'POST',
                 'callback' => array($this, 'clear_cache'),
                 'permission_callback' => array($this, 'check_admin_permissions_with_nonce'),
             ));
 
             // Cache settings endpoint
-            register_rest_route(self::API_NAMESPACE, '/cache/settings', array(
+            register_rest_route(self::get_api_namespace(), '/cache/settings', array(
                 'methods' => array('GET', 'POST'),
                 'callback' => array($this, 'handle_cache_settings'),
                 'permission_callback' => array($this, 'check_admin_permissions_with_nonce'),

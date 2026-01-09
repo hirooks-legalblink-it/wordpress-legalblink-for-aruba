@@ -65,7 +65,7 @@ if (!class_exists('LBFA_Main_API_Controller')) {
         public function register_routes()
         {
             // Banner data endpoint
-            register_rest_route(self::API_NAMESPACE, '/banner', array(
+            register_rest_route(self::get_api_namespace(), '/banner', array(
                 'methods' => array('GET', 'PUT'),
                 'callback' => array($this, 'handle_banner_data'),
                 'permission_callback' => array($this, 'check_admin_permissions_with_nonce'),
@@ -78,7 +78,7 @@ if (!class_exists('LBFA_Main_API_Controller')) {
             ));
 
             // WordPress pages endpoint
-            register_rest_route(self::API_NAMESPACE, '/pages', array(
+            register_rest_route(self::get_api_namespace(), '/pages', array(
                 'methods' => 'GET',
                 'callback' => array($this, 'get_wordpress_pages'),
                 'permission_callback' => array($this, 'check_admin_permissions_with_nonce')

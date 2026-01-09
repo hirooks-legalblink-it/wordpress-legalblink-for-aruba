@@ -17,14 +17,14 @@ if (!class_exists('LBFA_External_API_Controller')) {
         public function register_routes()
         {
             // Get languages
-            register_rest_route(self::API_NAMESPACE, '/languages', array(
+            register_rest_route(self::get_api_namespace(), '/languages', array(
                 'methods' => 'GET',
                 'callback' => array($this, 'get_languages'),
                 'permission_callback' => array($this, 'check_admin_permissions_with_nonce')
             ));
 
             // Get branding
-            register_rest_route(self::API_NAMESPACE, '/branding', array(
+            register_rest_route(self::get_api_namespace(), '/branding', array(
                 'methods' => 'GET',
                 'callback' => array($this, 'get_branding'),
                 'permission_callback' => array($this, 'check_admin_permissions_with_nonce')
@@ -53,7 +53,7 @@ if (!class_exists('LBFA_External_API_Controller')) {
                     );
                 }
 
-                $url = self::API_BASE_URL . '/languages';
+                $url = self::get_api_base_url() . '/languages';
                 $response = wp_remote_get($url, array(
                     'headers' => array(
                         'Content-Type' => 'application/json',
