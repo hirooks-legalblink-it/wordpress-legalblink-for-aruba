@@ -1,0 +1,42 @@
+/**
+ * src/styles/settings.scss
+ *
+ * Configures SASS variables and Vuetify overwrites
+ */
+
+// https://vuetifyjs.com/features/sass-variables/`
+@use 'vuetify/settings' with (
+  $tab-slider-size: 3px,
+  $color-pack: false,
+);
+
+/*input, select {
+  margin: inherit !important;
+}*/
+
+input[type="text"] {
+  box-shadow: inherit !important;
+  border-radius: inherit !important;
+  border: inherit !important;
+  background-color: inherit !important;
+  color: inherit !important;
+  min-height: max(var(--v-input-control-height, 56px), 1.5rem + var(--v-field-input-padding-top) + var(--v-field-input-padding-bottom)) !important;
+  min-width: 0;
+  padding: unset !important;
+  padding-inline: var(--v-field-padding-start) var(--v-field-padding-end) !important;
+  padding-top: var(--v-field-input-padding-top) !important;
+  padding-bottom: var(--v-field-input-padding-bottom) !important;
+  /*min-height: unset !important;*/
+  /*line-height: unset !important;*/
+  /*min-height: inherit !important;
+  line-height: inherit !important;*/
+}
+
+.v-text-field .v-input__details {
+   padding-inline: 0 !important;
+}
+
+.v-tab:not(.v-tab--selected) .v-tab__slider {
+  opacity: 1 !important;
+  background: #ddd !important;
+}
