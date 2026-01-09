@@ -130,6 +130,7 @@ rsync -av \
     --exclude='.vscode' \
     --exclude='logs/*.log' \
     --exclude='*.zip' \
+    --exclude='*.example.php' \
     ./ "${TEMP_BUILD_DIR}/${PLUGIN_NAME}/"
 
 # Ensure logs directory exists but is empty (keep index.php)
