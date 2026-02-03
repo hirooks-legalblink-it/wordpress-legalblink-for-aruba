@@ -15,13 +15,6 @@
  * License URI: https://www.gnu.org/licenses/gpl-3.0.html
  * Network: true
  *
- * SOURCE CODE REPOSITORY:
- * This plugin contains compiled JavaScript and CSS assets (in /assets/admin-ui/).
- * The human-readable source code is available at:
- * https://github.com/YOUR-USERNAME/legalblink-plugin-wp-refactor
- *
- * The admin interface source code is in the 'admin-ui/' directory.
- * Build instructions are available in README-DEVELOPERS.md
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
