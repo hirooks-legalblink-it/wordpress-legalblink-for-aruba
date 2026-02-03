@@ -55,9 +55,12 @@ After activation, you will find the menu item: “LegalBlink for Aruba”.
 
 == Configuration ==
 
-1. Retrieve your token from [https://app.legalblink.it/login](https://app.legalblink.it/login)
-2. Go to “LegalBlink for Aruba” on WordPress
-3. Paste the token and click “Login”
+1. Sign in to your Aruba account from [https://managehosting.aruba.it/AreaUtenti.asp?Lang=EN](https://managehosting.aruba.it/AreaUtenti.asp?Lang=EN)
+2. From the “Services” tab, next to the desired hosting service, click on “Manage” → “Additional services”
+3. Next to the “LegalBlink” service, click “Go to services” to access the service management page
+4. From the side menu, move to “Settings” and then click on the “Generate token” button to generate an access token
+5. Go to the “LegalBlink for Aruba” plugin on WordPress
+6. Paste the generated token and click “Login”
 
 == Frequently Asked Questions ==
 
@@ -82,7 +85,12 @@ The multilingual function is present in every package at no additional cost.
 
 = Can I edit the texts? =
 
-Yes, via [https://app.legalblink.it/login](https://app.legalblink.it/login).
+Yes, follow the steps below:
+1. Sign in to your Aruba account from [https://managehosting.aruba.it/AreaUtenti.asp?Lang=EN](https://managehosting.aruba.it/AreaUtenti.asp?Lang=EN)
+2. From the “Services” tab, next to the desired hosting service, click on “Manage” → “Additional services”
+3. Next to the “LegalBlink” service, click “Go to services” to access the service management page
+4. From the side menu, move to “Documents” area and edit the documents as needed.
+
 Updates are synced automatically.
 
 = Is LegalBlink compatible with WooCommerce? =
@@ -116,9 +124,8 @@ This plugin connects to the LegalBlink API to:
 
 = Service links =
 
-* **Service website**: [https://legalblink.it/](https://legalblink.it/)
-* **Terms of Service**: [https://legalblink.it/page/page-conditions/](https://legalblink.it/page/page-conditions/)
-* **Privacy Policy**: [https://legalblink.it/page/page-privacy/](https://legalblink.it/page/page-privacy/)
+* **Service website**: [https://www.aruba.it/en/home.aspx](https://www.aruba.it/en/home.aspx)
+* **Terms of Service**: [https://hosting.aruba.it/en/terms-conditions.aspx](https://hosting.aruba.it/en/terms-conditions.aspx)
 
 == Developer Information ==
 
