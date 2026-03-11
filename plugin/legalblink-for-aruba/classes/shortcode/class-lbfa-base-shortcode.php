@@ -174,6 +174,8 @@ if ( ! class_exists( 'LBFA_Base_Shortcode' ) ) {
 
             $content = wp_remote_retrieve_body($response);
 
+            // Strip <style> blocks entirely (tag + content) to avoid layout conflicts with the WordPress theme
+            $content = preg_replace('/<style\b[^>]*>.*?<\/style>/si', '', $content);
             $sanitized = wp_kses($content, wp_kses_allowed_html('post'));
 
             if (!empty($sanitized)) {
