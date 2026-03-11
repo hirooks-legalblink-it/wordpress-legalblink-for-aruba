@@ -4,7 +4,7 @@ Tags: gdpr, privacy, cookie, policy, compliance
 Requires at least: 6.0
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.0.1
+Stable tag: 1.0.2
 License: GPLv3 or later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -108,6 +108,8 @@ Yes, it can be configured for every site.
 = 1.0.1 =
 - Removed inline `<style>` blocks from embedded HTML documents to prevent layout conflicts with WordPress themes
 - Cache is now automatically invalidated after plugin updates
+= 1.0.2 =
+- Minor fixes
 
 == Upgrade Notice ==
 
