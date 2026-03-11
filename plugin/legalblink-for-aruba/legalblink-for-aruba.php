@@ -38,6 +38,9 @@ if (!defined('ABSPATH')) {
 if (!defined('LBFA_PLUGIN_DIR')) {
     define('LBFA_PLUGIN_DIR', plugin_dir_path(__FILE__));
 }
+if (!defined('LBFA_PLUGIN_VERSION')) {
+    define('LBFA_PLUGIN_VERSION', '1.0.2');
+}
 
 require_once __DIR__ . '/vendor/autoload.php';
 
@@ -46,6 +49,14 @@ function lbfa_init()
     try {
         // Initialize logger
         LBFA_Logger::info('Plugin initialization started', LBFA_Logger::CATEGORY_GENERAL, 'lbfa_init');
+
+        // Clear cache if plugin version changed (covers admin, FTP, WP-CLI, auto-updates)
+        $stored_version = get_option('lbfa_plugin_version', '');
+        if ($stored_version !== LBFA_PLUGIN_VERSION) {
+            LBFA_Transient_Helper::clearAll();
+            update_option('lbfa_plugin_version', LBFA_PLUGIN_VERSION, false);
+            LBFA_Logger::info('Plugin updated to ' . LBFA_PLUGIN_VERSION . ', cache cleared', LBFA_Logger::CATEGORY_GENERAL, 'lbfa_init');
+        }
 
         // Inizializza i componenti principali
         LBFA_Main_API_Controller::get_instance();
@@ -60,20 +71,6 @@ function lbfa_init()
 
 // Inizializza il plugin dopo che WordPress ha caricato tutti i plugin
 add_action('plugins_loaded', 'lbfa_init');
-
-/**
- * Invalidate the document HTML cache when this plugin is updated.
- */
-add_action('upgrader_process_complete', function ($upgrader, $hook_extra) {
-    if (
-        isset($hook_extra['type'], $hook_extra['plugins']) &&
-        $hook_extra['type'] === 'plugin' &&
-        is_array($hook_extra['plugins']) &&
-        in_array(plugin_basename(__FILE__), $hook_extra['plugins'], true)
-    ) {
-        LBFA_Transient_Helper::clearAll();
-    }
-}, 10, 2);
 
 function lbfa_add_type_attribute( array $attr )
 {
