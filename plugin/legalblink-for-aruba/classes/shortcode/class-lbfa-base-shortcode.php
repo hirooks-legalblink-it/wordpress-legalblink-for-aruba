@@ -174,14 +174,7 @@ if ( ! class_exists( 'LBFA_Base_Shortcode' ) ) {
 
             $content = wp_remote_retrieve_body($response);
 
-            $allowed_tags = array_merge(
-                wp_kses_allowed_html('post'),
-                array(
-                    'style' => array() // permetti i <style>
-                )
-            );
-
-            $sanitized = wp_kses($content, $allowed_tags);
+            $sanitized = wp_kses($content, wp_kses_allowed_html('post'));
 
             if (!empty($sanitized)) {
                 // Cache the content
