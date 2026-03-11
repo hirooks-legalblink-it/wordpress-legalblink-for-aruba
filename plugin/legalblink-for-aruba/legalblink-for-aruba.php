@@ -61,6 +61,20 @@ function lbfa_init()
 // Inizializza il plugin dopo che WordPress ha caricato tutti i plugin
 add_action('plugins_loaded', 'lbfa_init');
 
+/**
+ * Invalidate the document HTML cache when this plugin is updated.
+ */
+add_action('upgrader_process_complete', function ($upgrader, $hook_extra) {
+    if (
+        isset($hook_extra['type'], $hook_extra['plugins']) &&
+        $hook_extra['type'] === 'plugin' &&
+        is_array($hook_extra['plugins']) &&
+        in_array(plugin_basename(__FILE__), $hook_extra['plugins'], true)
+    ) {
+        LBFA_Transient_Helper::clearAll();
+    }
+}, 10, 2);
+
 function lbfa_add_type_attribute( array $attr )
 {
     $scripts_type_module = ['lbfa_admin-ui-main-script-js'];
