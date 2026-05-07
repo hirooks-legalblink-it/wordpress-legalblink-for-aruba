@@ -138,6 +138,16 @@
               />
             </v-window-item>
 
+            <v-window-item value="accessibility_widget">
+              <AccessibilityWidgetSettingsCard
+                :local-enabled="store.accessibilityWidget?.localEnabled ?? false"
+                :saving="store.getIsSavingAccessibilityWidgetToggle"
+                :widget="store.accessibilityWidget"
+                @save="saveAccessibilityWidgetSettings"
+                @update:enabled="handleAccessibilityWidgetToggle"
+              />
+            </v-window-item>
+
             <v-window-item value="cache">
               <CacheSettingsCard
                 :cache-duration="cacheDuration"
@@ -247,6 +257,7 @@
     { label: 'Privacy policy', value: 'privacy_policy' },
     { label: 'Informativa CGV', value: 'terms_of_service' },
     { label: 'Dichiarazione accessibilità', value: 'accessibility_declaration' },
+    { label: 'Widget accessibilità', value: 'accessibility_widget' },
     { label: 'Cache', value: 'cache' },
   ]
 
@@ -273,6 +284,10 @@
 
       if (tab.value === 'accessibility_declaration') {
         return store.isAccessibilityDeclarationEnabled
+      }
+
+      if (tab.value === 'accessibility_widget') {
+        return store.isAccessibilityWidgetEnabled
       }
 
       return false
@@ -322,6 +337,19 @@
 
   function saveAccessibilityDeclarationSettings () {
     showMessage('Impostazioni dichiarazione di accessibilità salvate!')
+  }
+
+  async function handleAccessibilityWidgetToggle (enabled: boolean) {
+    try {
+      await store.saveAccessibilityWidgetToggle(enabled)
+    } catch (error) {
+      console.error('Errore salvataggio toggle widget accessibilità:', error)
+      showMessage('Errore nel salvataggio del toggle widget di accessibilità', 'error')
+    }
+  }
+
+  function saveAccessibilityWidgetSettings () {
+    showMessage('Impostazioni widget di accessibilità salvate!')
   }
 
   async function saveCacheSettings () {

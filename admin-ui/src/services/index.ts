@@ -6,7 +6,9 @@ export {
   type AccessibilityDeclarationLanguageData,
   AccessibilityService,
   accessibilityService,
+  type AccessibilityWidget,
   type UpdateDeclarationPageRequest,
+  type UpdateWidgetToggleRequest,
 } from './AccessibilityService'
 export { type ApiConfig, type ApiResponse, BaseApiService } from './BaseApiService'
 export { type BrandingData, BrandingService, brandingService } from './BrandingService'

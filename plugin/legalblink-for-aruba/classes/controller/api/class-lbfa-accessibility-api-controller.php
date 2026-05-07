@@ -20,6 +20,9 @@ if (!class_exists('LBFA_Accessibility_API_Controller')) {
     {
         const POLICY_TYPE = 'accessibility_declaration';
         const SHORTCODE = '[LBFA_ACCESSIBILITY_DECLARATION]';
+        const WIDGET_CACHE_KEY = 'accessibility_widget_snippet';
+        const WIDGET_LOCAL_TOGGLE_OPTION = 'accessibility_widget_enabled';
+        const ALLOWED_WIDGET_WARNINGS = array('configuration_missing', 'domain_mismatch', 'configuration_expired');
 
         public function register_routes()
         {
@@ -50,6 +53,25 @@ if (!class_exists('LBFA_Accessibility_API_Controller')) {
                         'validate_callback' => static function ($param) {
                             return is_string($param) && preg_match('/^[a-z]{2}$/', $param);
                         },
+                    ),
+                ),
+            ));
+
+            register_rest_route(self::get_api_namespace(), '/accessibility/widget', array(
+                array(
+                    'methods' => 'GET',
+                    'callback' => array($this, 'get_widget'),
+                    'permission_callback' => array($this, 'check_admin_permissions_with_nonce'),
+                ),
+                array(
+                    'methods' => 'PUT',
+                    'callback' => array($this, 'set_widget_local_toggle'),
+                    'permission_callback' => array($this, 'check_admin_permissions_with_nonce'),
+                    'args' => array(
+                        'enabled' => array(
+                            'required' => true,
+                            'type' => 'boolean',
+                        ),
                     ),
                 ),
             ));
@@ -201,6 +223,164 @@ if (!class_exists('LBFA_Accessibility_API_Controller')) {
                     __('Page update exception', 'legalblink-for-aruba')
                 );
             }
+        }
+
+        /**
+         * Read the accessibility widget snippet + status. Strictly read-only:
+         * configuration (style, domain, white label) lives in the Aruba web
+         * app, never in the plugin. The local toggle that controls injection
+         * on the WordPress site is read from the option storage and tacked
+         * onto the response shape so the admin UI has everything in one call.
+         */
+        public function get_widget()
+        {
+            try {
+                $cached = LBFA_Transient_Helper::get(self::WIDGET_CACHE_KEY);
+                if ($cached !== false) {
+                    LBFA_Logger::info('Accessibility widget retrieved from cache', LBFA_Logger::CATEGORY_API, 'get_widget');
+                    return $this->create_api_response(true, $this->with_local_toggle($cached));
+                }
+
+                $jwt_token = LBFA_Option_Helper::getOption('jwt_token');
+                if (empty($jwt_token)) {
+                    return $this->create_error_response(
+                        /* translators: Error message when authentication credentials are missing */
+                        __('Credenziali mancanti.', 'legalblink-for-aruba'),
+                        /* translators: English error message for missing credentials */
+                        __('Missing credentials', 'legalblink-for-aruba')
+                    );
+                }
+
+                $url = self::get_api_base_url() . '/accessibility/widget';
+                $response = wp_remote_get($url, array(
+                    'headers' => array(
+                        'Content-Type' => 'application/json',
+                        'Authorization' => 'Bearer ' . $jwt_token,
+                    ),
+                    'timeout' => 30,
+                ));
+
+                if (is_wp_error($response)) {
+                    LBFA_Logger::error(
+                        'Accessibility widget request error: ' . $response->get_error_message(),
+                        LBFA_Logger::CATEGORY_API,
+                        'get_widget'
+                    );
+                    return $this->create_error_response(
+                        /* translators: Error message prefix for accessibility widget request errors */
+                        __('Errore nella richiesta widget accessibilità: ', 'legalblink-for-aruba') . $response->get_error_message(),
+                        /* translators: English error message for accessibility widget request failure */
+                        __('Accessibility widget request failed', 'legalblink-for-aruba')
+                    );
+                }
+
+                $code = wp_remote_retrieve_response_code($response);
+                $body = wp_remote_retrieve_body($response);
+                $payload = json_decode($body, true);
+
+                if ($code !== 200 || !is_array($payload)) {
+                    LBFA_Logger::warning('Accessibility widget request failed with code: ' . $code, LBFA_Logger::CATEGORY_API, 'get_widget');
+                    return $this->create_error_response(
+                        /* translators: %d is the HTTP response code for accessibility widget request failure */
+                        sprintf(__('Richiesta widget accessibilità fallita: %d', 'legalblink-for-aruba'), $code),
+                        /* translators: English error message for accessibility widget request failure */
+                        __('Accessibility widget request failed', 'legalblink-for-aruba')
+                    );
+                }
+
+                $normalized = $this->normalize_widget($payload);
+                $expiration = max(60, self::get_api_cache_time());
+                LBFA_Transient_Helper::set(self::WIDGET_CACHE_KEY, $normalized, $expiration);
+
+                LBFA_Logger::info(
+                    'Accessibility widget retrieved successfully (configured=' . (!empty($normalized['configured']) ? 'true' : 'false') . ')',
+                    LBFA_Logger::CATEGORY_API,
+                    'get_widget'
+                );
+
+                return $this->create_api_response(true, $this->with_local_toggle($normalized));
+            } catch (Exception $e) {
+                LBFA_Logger::error('Accessibility widget exception: ' . $e->getMessage(), LBFA_Logger::CATEGORY_API, 'get_widget');
+                return $this->create_error_response(
+                    /* translators: Error message for unexpected accessibility widget retrieval errors */
+                    __('Errore imprevisto nel recupero widget accessibilità', 'legalblink-for-aruba'),
+                    /* translators: English error message for accessibility widget exception */
+                    __('Accessibility widget exception', 'legalblink-for-aruba')
+                );
+            }
+        }
+
+        /**
+         * Persist the local enabled/disabled toggle for the widget. The
+         * snippet itself is fetched from the backend; the toggle only decides
+         * whether `LBFA_Frontend_Manager::render_accessibility_widget()`
+         * injects the snippet on the public site.
+         */
+        public function set_widget_local_toggle($request)
+        {
+            try {
+                $enabled = (bool) $this->sanitize_and_validate_input(
+                    $request->get_param('enabled'),
+                    array('type' => 'bool')
+                );
+
+                LBFA_Option_Helper::setOption(self::WIDGET_LOCAL_TOGGLE_OPTION, $enabled);
+
+                return $this->create_api_response(true, array('enabled' => $enabled));
+            } catch (Exception $e) {
+                LBFA_Logger::error('Accessibility widget toggle exception: ' . $e->getMessage(), LBFA_Logger::CATEGORY_API, 'set_widget_local_toggle');
+                return $this->create_error_response(
+                    /* translators: Error message for unexpected widget toggle update errors */
+                    __('Errore imprevisto nell\'aggiornamento del toggle widget', 'legalblink-for-aruba'),
+                    /* translators: English error message for widget toggle exception */
+                    __('Widget toggle exception', 'legalblink-for-aruba')
+                );
+            }
+        }
+
+        /**
+         * Normalize the widget payload, ensuring `configured` reflects the
+         * combined `available` flag and the absence of warnings.
+         */
+        public function normalize_widget(array $payload): array
+        {
+            $available = (bool) ($payload['available'] ?? false);
+            $configured = (bool) ($payload['configured'] ?? false);
+            $domain = isset($payload['domain']) ? (string) $payload['domain'] : '';
+            $html = isset($payload['html']) ? (string) $payload['html'] : '';
+
+            $warnings_raw = isset($payload['warnings']) && is_array($payload['warnings']) ? $payload['warnings'] : array();
+            $warnings = array();
+            foreach ($warnings_raw as $warning) {
+                if (is_string($warning) && in_array($warning, self::ALLOWED_WIDGET_WARNINGS, true)) {
+                    $warnings[] = $warning;
+                }
+            }
+
+            // A widget that reports warnings is never considered configured even
+            // if the backend says otherwise — defensive against partial payloads.
+            if (!empty($warnings)) {
+                $configured = false;
+            }
+
+            return array(
+                'available' => $available,
+                'configured' => $configured,
+                'domain' => $domain,
+                'html' => $html,
+                'warnings' => $warnings,
+            );
+        }
+
+        /**
+         * Inject the local toggle into the widget payload so the admin UI can
+         * render the switch alongside the snippet without an extra option
+         * round trip.
+         */
+        private function with_local_toggle(array $widget): array
+        {
+            $widget['localEnabled'] = (bool) LBFA_Option_Helper::getOption(self::WIDGET_LOCAL_TOGGLE_OPTION, false);
+            return $widget;
         }
 
         /**

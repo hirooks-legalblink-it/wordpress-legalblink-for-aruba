@@ -1,4 +1,5 @@
 import { type ApiResponse, BaseApiService } from './BaseApiService'
+import type { AccessibilityWidgetWarning } from './CapabilityService'
 import type { PolicyLanguageUrl } from './DocumentService'
 
 /**
@@ -32,6 +33,24 @@ export interface UpdateDeclarationPageRequest {
 }
 
 /**
+ * Read-only widget descriptor returned by the plugin REST endpoint.
+ * `localEnabled` is the local toggle that decides if the snippet is injected
+ * on the public site; the rest comes straight from the backend.
+ */
+export interface AccessibilityWidget {
+  available: boolean
+  configured: boolean
+  domain: string
+  html: string
+  warnings: AccessibilityWidgetWarning[]
+  localEnabled: boolean
+}
+
+export interface UpdateWidgetToggleRequest {
+  enabled: boolean
+}
+
+/**
  * S#7701 mixed-mode accessibility surface (Phase 3+).
  *
  * Strictly separate from `DocumentService` to keep the GDPR-legacy surface
@@ -46,6 +65,14 @@ export class AccessibilityService extends BaseApiService {
 
   async updateDeclarationPage (request: UpdateDeclarationPageRequest): Promise<ApiResponse<unknown>> {
     return this.post('accessibility/declaration/update-page', request)
+  }
+
+  async getWidget (): Promise<ApiResponse<AccessibilityWidget>> {
+    return this.get<AccessibilityWidget>('accessibility/widget')
+  }
+
+  async setWidgetEnabled (enabled: boolean): Promise<ApiResponse<{ enabled: boolean }>> {
+    return this.put<{ enabled: boolean }>('accessibility/widget', { enabled })
   }
 }
 

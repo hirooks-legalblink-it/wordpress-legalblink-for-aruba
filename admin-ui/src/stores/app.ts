@@ -1,4 +1,4 @@
-import type { AccessibilityDeclaration, UpdateDeclarationPageRequest } from '@/services/AccessibilityService'
+import type { AccessibilityDeclaration, AccessibilityWidget, UpdateDeclarationPageRequest } from '@/services/AccessibilityService'
 import type { BannerData } from '@/services/BannerService'
 import type { Capabilities } from '@/services/CapabilityService'
 import type { PolicyDocument, PolicyKey } from '@/services/DocumentService'
@@ -60,6 +60,11 @@ export const useAppStore = defineStore('app', {
     accessibilityDeclarationError: null as string | null,
     isUpdatingAccessibilityDeclarationPage: false,
     updateAccessibilityDeclarationPageError: null as string | null,
+    accessibilityWidget: null as AccessibilityWidget | null,
+    isLoadingAccessibilityWidget: false,
+    accessibilityWidgetError: null as string | null,
+    isSavingAccessibilityWidgetToggle: false,
+    saveAccessibilityWidgetToggleError: null as string | null,
     documents: {} as Record<PolicyKey, PolicyDocument>,
     isLoadingDocuments: false,
     documentsError: null as string | null,
@@ -117,6 +122,10 @@ export const useAppStore = defineStore('app', {
     getAccessibilityDeclaration: state => state.accessibilityDeclaration,
     getIsLoadingAccessibilityDeclaration: state => state.isLoadingAccessibilityDeclaration,
     getAccessibilityDeclarationError: state => state.accessibilityDeclarationError,
+    getAccessibilityWidget: state => state.accessibilityWidget,
+    getIsLoadingAccessibilityWidget: state => state.isLoadingAccessibilityWidget,
+    getAccessibilityWidgetError: state => state.accessibilityWidgetError,
+    getIsSavingAccessibilityWidgetToggle: state => state.isSavingAccessibilityWidgetToggle,
   },
 
   actions: {
@@ -163,6 +172,53 @@ export const useAppStore = defineStore('app', {
         throw error
       } finally {
         this.isUpdatingAccessibilityDeclarationPage = false
+      }
+    },
+
+    async loadAccessibilityWidget () {
+      this.isLoadingAccessibilityWidget = true
+      this.accessibilityWidgetError = null
+
+      try {
+        const response = await accessibilityService.getWidget()
+        if (response.success && response.data) {
+          this.accessibilityWidget = response.data
+        } else {
+          this.accessibilityWidget = null
+          this.accessibilityWidgetError = response.errors?.[0]
+            || response.message
+            || 'Errore nel caricamento del widget di accessibilità'
+        }
+      } catch (error) {
+        this.accessibilityWidget = null
+        this.accessibilityWidgetError = error instanceof Error
+          ? error.message
+          : 'Errore nel caricamento del widget di accessibilità'
+      } finally {
+        this.isLoadingAccessibilityWidget = false
+      }
+    },
+
+    async saveAccessibilityWidgetToggle (enabled: boolean) {
+      this.isSavingAccessibilityWidgetToggle = true
+      this.saveAccessibilityWidgetToggleError = null
+
+      try {
+        const response = await accessibilityService.setWidgetEnabled(enabled)
+        if (!response.success) {
+          throw new Error(response.errors?.[0] || response.message || 'Errore nel salvataggio del toggle widget')
+        }
+        if (this.accessibilityWidget) {
+          this.accessibilityWidget = { ...this.accessibilityWidget, localEnabled: enabled }
+        }
+        return response.data
+      } catch (error) {
+        this.saveAccessibilityWidgetToggleError = error instanceof Error
+          ? error.message
+          : 'Errore nel salvataggio del toggle widget'
+        throw error
+      } finally {
+        this.isSavingAccessibilityWidgetToggle = false
       }
     },
 
@@ -377,6 +433,12 @@ export const useAppStore = defineStore('app', {
       } else {
         this.clearAccessibilityDeclaration()
       }
+
+      if (this.isAccessibilityWidgetEnabled) {
+        this.loadAccessibilityWidget().then()
+      } else {
+        this.clearAccessibilityWidget()
+      }
     },
 
     setSelectedLanguage (language: string) {
@@ -442,6 +504,14 @@ export const useAppStore = defineStore('app', {
       this.updateAccessibilityDeclarationPageError = null
     },
 
+    clearAccessibilityWidget () {
+      this.accessibilityWidget = null
+      this.accessibilityWidgetError = null
+      this.isLoadingAccessibilityWidget = false
+      this.isSavingAccessibilityWidgetToggle = false
+      this.saveAccessibilityWidgetToggleError = null
+    },
+
     clearAll () {
       this.clearAuth()
       this.clearBranding()
@@ -452,6 +522,7 @@ export const useAppStore = defineStore('app', {
       this.clearBanner()
       this.clearCapabilities()
       this.clearAccessibilityDeclaration()
+      this.clearAccessibilityWidget()
     },
   },
 })
