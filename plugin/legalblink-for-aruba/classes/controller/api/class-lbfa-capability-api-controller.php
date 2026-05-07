@@ -23,6 +23,23 @@ if (!class_exists('LBFA_Capability_API_Controller')) {
          */
         const CACHE_KEY = 'capabilities';
 
+        /**
+         * Check whether a feature flag is enabled in the cached capabilities.
+         *
+         * Returns false when capabilities haven't been resolved yet (e.g. the
+         * plugin is rendering the cookie banner before the admin opened the
+         * dashboard) — callers should treat that as a safe default to legacy
+         * behaviour rather than blocking rendering.
+         */
+        public static function is_feature_enabled(string $feature): bool
+        {
+            $capabilities = LBFA_Transient_Helper::get(self::CACHE_KEY);
+            if (!is_array($capabilities) || !isset($capabilities['features'][$feature])) {
+                return false;
+            }
+            return (bool) $capabilities['features'][$feature];
+        }
+
         public function register_routes()
         {
             register_rest_route(self::get_api_namespace(), '/capabilities', array(

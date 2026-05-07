@@ -171,7 +171,15 @@ if (!class_exists('LBFA_Main_API_Controller')) {
                 );
             }
 
-            $url = self::get_api_base_url() . '/cookie-solution/embed?language=it';
+            // S#7701 Phase 5: prefer the v2 embed endpoint when the capability
+            // is enabled (cached via LBFA_Capability_API_Controller). Falls
+            // back to the legacy embed silently on capability miss so existing
+            // installs keep working without admin interaction.
+            $use_v2 = class_exists('LBFA_Capability_API_Controller')
+                && LBFA_Capability_API_Controller::is_feature_enabled('cookieBannerV2');
+            $endpoint = $use_v2 ? '/cookie-solution/embed-v2' : '/cookie-solution/embed?language=it';
+
+            $url = self::get_api_base_url() . $endpoint;
             $response = wp_remote_get($url, array(
                 'headers' => array(
                     'Content-Type' => 'application/json',
@@ -190,7 +198,7 @@ if (!class_exists('LBFA_Main_API_Controller')) {
             $body = wp_remote_retrieve_body($response);
             $banner_data = json_decode($body, true);
 
-            LBFA_Logger::debug('Banner fetch response: ' . wp_json_encode($banner_data), LBFA_Logger::CATEGORY_GENERAL, 'fetch_banner_snippet');
+            LBFA_Logger::debug('Banner fetch response (v2=' . ($use_v2 ? '1' : '0') . '): ' . wp_json_encode($banner_data), LBFA_Logger::CATEGORY_GENERAL, 'fetch_banner_snippet');
 
             if ($code !== 200 || !isset($banner_data['html'])) {
                 // Log failed verification
@@ -204,7 +212,7 @@ if (!class_exists('LBFA_Main_API_Controller')) {
             }
 
             // Log successful verification
-            LBFA_Logger::info('Banner snippet fetched successfully', LBFA_Logger::CATEGORY_GENERAL, 'fetch_banner_snippet');
+            LBFA_Logger::info('Banner snippet fetched successfully (v2=' . ($use_v2 ? '1' : '0') . ')', LBFA_Logger::CATEGORY_GENERAL, 'fetch_banner_snippet');
 
             return $banner_data['html'];
         }

@@ -30,7 +30,12 @@ if ( ! class_exists( 'LBFA_Frontend_Manager' ) ) {
         }
 
         /**
-         * Render cookie consent banner
+         * Render cookie consent banner.
+         *
+         * S#7701 Phase 5: dispatches between the legacy `/cookie-solution/embed`
+         * and the new `/cookie-solution/embed-v2` based on the
+         * `features.cookieBannerV2` capability. Uses a separate cache key for
+         * v2 so an account that flips between the two never gets stale HTML.
          */
         public function render_cookie_banner()
         {
@@ -41,11 +46,14 @@ if ( ! class_exists( 'LBFA_Frontend_Manager' ) ) {
             $cache_duration = LBFA_Option_Helper::getOption('cache_duration', 30);
             $cache_duration_days = $cache_duration * 3600 * 24;
 
-            $banner_snippet = LBFA_Transient_Helper::get('cookie_banner_snippet');
+            $use_v2 = self::should_use_banner_v2();
+            $cache_key = $use_v2 ? 'cookie_banner_snippet_v2' : 'cookie_banner_snippet';
+
+            $banner_snippet = LBFA_Transient_Helper::get($cache_key);
             if ($banner_snippet === false) {
-                $banner_snippet = $this->fetch_banner_snippet();
+                $banner_snippet = $this->fetch_banner_snippet($use_v2);
                 if (!empty($banner_snippet)) {
-                    LBFA_Transient_Helper::set('cookie_banner_snippet', $banner_snippet, $cache_duration_days);
+                    LBFA_Transient_Helper::set($cache_key, $banner_snippet, $cache_duration_days);
                 }
             }
 
@@ -64,7 +72,19 @@ if ( ! class_exists( 'LBFA_Frontend_Manager' ) ) {
             }
         }
 
-        public function fetch_banner_snippet()
+        /**
+         * Decide whether to use the v2 cookie banner endpoint based on the
+         * cached capabilities. Falls back to false (legacy) when capabilities
+         * have not been resolved yet, so existing flows keep working before
+         * the admin opens the dashboard.
+         */
+        public static function should_use_banner_v2(): bool
+        {
+            return class_exists('LBFA_Capability_API_Controller')
+                && LBFA_Capability_API_Controller::is_feature_enabled('cookieBannerV2');
+        }
+
+        public function fetch_banner_snippet($use_v2 = null)
         {
             $jwt_token = LBFA_Option_Helper::getOption('jwt_token');
 
@@ -72,7 +92,12 @@ if ( ! class_exists( 'LBFA_Frontend_Manager' ) ) {
                 return '';
             }
 
-            $url = LBFA_Base_API_Controller::get_api_base_url() . '/cookie-solution/embed?language=it';
+            if ($use_v2 === null) {
+                $use_v2 = self::should_use_banner_v2();
+            }
+
+            $endpoint = $use_v2 ? '/cookie-solution/embed-v2' : '/cookie-solution/embed?language=it';
+            $url = LBFA_Base_API_Controller::get_api_base_url() . $endpoint;
             $response = wp_remote_get($url, array(
                 'headers' => array(
                     'Content-Type' => 'application/json',
@@ -90,14 +115,14 @@ if ( ! class_exists( 'LBFA_Frontend_Manager' ) ) {
             $body = wp_remote_retrieve_body($response);
             $banner_data = json_decode($body, true);
 
-            LBFA_Logger::debug('Banner fetch response: ' . wp_json_encode($banner_data), LBFA_Logger::CATEGORY_GENERAL, 'fetch_banner_snippet');
+            LBFA_Logger::debug('Banner fetch response (v2=' . ($use_v2 ? '1' : '0') . '): ' . wp_json_encode($banner_data), LBFA_Logger::CATEGORY_GENERAL, 'fetch_banner_snippet');
 
             if ($code !== 200 || !isset($banner_data['html'])) {
                 LBFA_Logger::warning('Error', LBFA_Logger::CATEGORY_GENERAL, 'fetch_banner_snippet');
                 return '';
             }
 
-            LBFA_Logger::info('Banner snippet fetched successfully', LBFA_Logger::CATEGORY_GENERAL, 'fetch_banner_snippet');
+            LBFA_Logger::info('Banner snippet fetched successfully (v2=' . ($use_v2 ? '1' : '0') . ')', LBFA_Logger::CATEGORY_GENERAL, 'fetch_banner_snippet');
 
             return $banner_data['html'];
         }
