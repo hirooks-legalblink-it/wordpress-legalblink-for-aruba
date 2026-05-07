@@ -1,3 +1,4 @@
+import type { AccessibilityDeclaration, UpdateDeclarationPageRequest } from '@/services/AccessibilityService'
 import type { BannerData } from '@/services/BannerService'
 import type { Capabilities } from '@/services/CapabilityService'
 import type { PolicyDocument, PolicyKey } from '@/services/DocumentService'
@@ -6,6 +7,7 @@ import type { UpdatePageRequest, WordPressPage } from '@/services/SettingsServic
 import { defineStore } from 'pinia'
 import { themeConf } from '@/plugins/vuetify.ts'
 import {
+  accessibilityService,
   authService,
   bannerService,
   type BrandingData,
@@ -53,6 +55,11 @@ export const useAppStore = defineStore('app', {
     capabilities: null as Capabilities | null,
     isLoadingCapabilities: false,
     capabilitiesError: null as string | null,
+    accessibilityDeclaration: null as AccessibilityDeclaration | null,
+    isLoadingAccessibilityDeclaration: false,
+    accessibilityDeclarationError: null as string | null,
+    isUpdatingAccessibilityDeclarationPage: false,
+    updateAccessibilityDeclarationPageError: null as string | null,
     documents: {} as Record<PolicyKey, PolicyDocument>,
     isLoadingDocuments: false,
     documentsError: null as string | null,
@@ -107,9 +114,58 @@ export const useAppStore = defineStore('app', {
     isAccessibilityDeclarationEnabled: state => !!state.capabilities?.features.accessibilityDeclaration,
     isAccessibilityWidgetEnabled: state => !!state.capabilities?.features.accessibilityWidget,
     isCookieBannerV2Enabled: state => !!state.capabilities?.features.cookieBannerV2,
+    getAccessibilityDeclaration: state => state.accessibilityDeclaration,
+    getIsLoadingAccessibilityDeclaration: state => state.isLoadingAccessibilityDeclaration,
+    getAccessibilityDeclarationError: state => state.accessibilityDeclarationError,
   },
 
   actions: {
+    async loadAccessibilityDeclaration () {
+      this.isLoadingAccessibilityDeclaration = true
+      this.accessibilityDeclarationError = null
+
+      try {
+        const response = await accessibilityService.getDeclaration()
+        if (response.success && response.data) {
+          this.accessibilityDeclaration = response.data
+        } else {
+          this.accessibilityDeclaration = null
+          this.accessibilityDeclarationError = response.errors?.[0]
+            || response.message
+            || 'Errore nel caricamento della dichiarazione di accessibilità'
+        }
+      } catch (error) {
+        this.accessibilityDeclaration = null
+        this.accessibilityDeclarationError = error instanceof Error
+          ? error.message
+          : 'Errore nel caricamento della dichiarazione di accessibilità'
+      } finally {
+        this.isLoadingAccessibilityDeclaration = false
+      }
+    },
+
+    async updateAccessibilityDeclarationPage (request: UpdateDeclarationPageRequest) {
+      this.isUpdatingAccessibilityDeclarationPage = true
+      this.updateAccessibilityDeclarationPageError = null
+
+      try {
+        const response = await accessibilityService.updateDeclarationPage(request)
+        if (!response.success) {
+          throw new Error(response.errors?.[0] || response.message || 'Errore nell\'aggiornamento della pagina')
+        }
+        // Refresh so pageId/useHtmlSnippet reflect the new option state.
+        await this.loadAccessibilityDeclaration()
+        return response.data
+      } catch (error) {
+        this.updateAccessibilityDeclarationPageError = error instanceof Error
+          ? error.message
+          : 'Errore nell\'aggiornamento della pagina'
+        throw error
+      } finally {
+        this.isUpdatingAccessibilityDeclarationPage = false
+      }
+    },
+
     async loadCapabilities () {
       this.isLoadingCapabilities = true
       this.capabilitiesError = null
@@ -315,6 +371,12 @@ export const useAppStore = defineStore('app', {
         this.clearDocuments()
         this.clearBanner()
       }
+
+      if (this.isAccessibilityDeclarationEnabled) {
+        this.loadAccessibilityDeclaration().then()
+      } else {
+        this.clearAccessibilityDeclaration()
+      }
     },
 
     setSelectedLanguage (language: string) {
@@ -372,6 +434,14 @@ export const useAppStore = defineStore('app', {
       this.isLoadingCapabilities = false
     },
 
+    clearAccessibilityDeclaration () {
+      this.accessibilityDeclaration = null
+      this.accessibilityDeclarationError = null
+      this.isLoadingAccessibilityDeclaration = false
+      this.isUpdatingAccessibilityDeclarationPage = false
+      this.updateAccessibilityDeclarationPageError = null
+    },
+
     clearAll () {
       this.clearAuth()
       this.clearBranding()
@@ -381,6 +451,7 @@ export const useAppStore = defineStore('app', {
       this.clearCacheSettings()
       this.clearBanner()
       this.clearCapabilities()
+      this.clearAccessibilityDeclaration()
     },
   },
 })

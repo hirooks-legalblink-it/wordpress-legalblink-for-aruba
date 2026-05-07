@@ -122,6 +122,22 @@
               />
             </v-window-item>
 
+            <v-window-item value="accessibility_declaration">
+              <PolicySettingsCard
+                :policy-page="accessibilityDeclarationPage"
+                :policy-pages="policyPages"
+                policy-type="accessibility_declaration"
+                :policy-url="accessibilityDeclarationUrl"
+                :shortcode="accessibilityDeclarationShortcode"
+                title="Impostazioni della dichiarazione di accessibilità"
+                :use-html-snippet="useAccessibilityDeclarationHtmlSnippet"
+                @page-updated="handlePageUpdated"
+                @save="saveAccessibilityDeclarationSettings"
+                @update:policy-page="accessibilityDeclarationPage = $event"
+                @update:use-html-snippet="useAccessibilityDeclarationHtmlSnippet = $event"
+              />
+            </v-window-item>
+
             <v-window-item value="cache">
               <CacheSettingsCard
                 :cache-duration="cacheDuration"
@@ -184,6 +200,11 @@
     const document = store.getDocument('terms_of_service')
     return document?.languages?.[selectedLanguage.value]?.url.html || ''
   })
+  const accessibilityDeclarationUrl = computed(() => {
+    const declaration = store.getAccessibilityDeclaration
+    if (!declaration?.available || !declaration.document) return ''
+    return declaration.document.languages?.[selectedLanguage.value]?.url.html || ''
+  })
 
   const snackbar = ref({
     show: false,
@@ -225,6 +246,7 @@
     { label: 'Cookie policy', value: 'cookie_policy' },
     { label: 'Privacy policy', value: 'privacy_policy' },
     { label: 'Informativa CGV', value: 'terms_of_service' },
+    { label: 'Dichiarazione accessibilità', value: 'accessibility_declaration' },
     { label: 'Cache', value: 'cache' },
   ]
 
@@ -247,6 +269,10 @@
           return false
         }
         return store.getDocument(tab.value as any) !== null
+      }
+
+      if (tab.value === 'accessibility_declaration') {
+        return store.isAccessibilityDeclarationEnabled
       }
 
       return false
@@ -273,6 +299,10 @@
   const cgvPolicyPage = ref<string | null>(null)
   const cgvShortcode = '[LBFA_CGV_POLICY]'
 
+  const useAccessibilityDeclarationHtmlSnippet = ref(false)
+  const accessibilityDeclarationPage = ref<string | null>(null)
+  const accessibilityDeclarationShortcode = '[LBFA_ACCESSIBILITY_DECLARATION]'
+
   const cacheDuration = computed({
     get: () => store.cacheSettings.cache_duration || 30,
     set: value => store.cacheSettings.cache_duration = value,
@@ -288,6 +318,10 @@
 
   function saveCgvPolicySettings () {
     showMessage('Impostazioni CGV salvate!')
+  }
+
+  function saveAccessibilityDeclarationSettings () {
+    showMessage('Impostazioni dichiarazione di accessibilità salvate!')
   }
 
   async function saveCacheSettings () {
@@ -358,6 +392,14 @@
     if (cgvDoc?.languages?.[currentLanguage]) {
       cgvPolicyPage.value = cgvDoc.languages[currentLanguage].pageId
       useCgvHtmlSnippet.value = cgvDoc.languages[currentLanguage].useHtmlSnippet
+    }
+
+    // Accessibility declaration (S#7701 mixed-mode)
+    const declaration = store.getAccessibilityDeclaration
+    const declarationLang = declaration?.document?.languages?.[currentLanguage]
+    if (declarationLang) {
+      accessibilityDeclarationPage.value = declarationLang.pageId
+      useAccessibilityDeclarationHtmlSnippet.value = declarationLang.useHtmlSnippet
     }
   })
 </script>

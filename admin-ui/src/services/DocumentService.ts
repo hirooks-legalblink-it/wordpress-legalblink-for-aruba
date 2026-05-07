@@ -1,6 +1,10 @@
 import { type ApiResponse, BaseApiService } from './BaseApiService'
 
-export type PolicyKey = 'privacy_policy' | 'cookie_policy' | 'terms_of_service'
+export type PolicyKey =
+  | 'privacy_policy'
+  | 'cookie_policy'
+  | 'terms_of_service'
+  | 'accessibility_declaration'
 
 export interface PolicyLanguageUrl {
   html: string

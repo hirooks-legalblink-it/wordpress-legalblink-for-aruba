@@ -1,5 +1,13 @@
 export { type AuthResponse, AuthService, authService, type UserData } from './AuthService'
 export { type BannerData, BannerService, bannerService, type UpsellConfig } from './BannerService'
+export {
+  type AccessibilityDeclaration,
+  type AccessibilityDeclarationDocument,
+  type AccessibilityDeclarationLanguageData,
+  AccessibilityService,
+  accessibilityService,
+  type UpdateDeclarationPageRequest,
+} from './AccessibilityService'
 export { type ApiConfig, type ApiResponse, BaseApiService } from './BaseApiService'
 export { type BrandingData, BrandingService, brandingService } from './BrandingService'
 export { CacheService, cacheService, type CacheSettings } from './CacheService'

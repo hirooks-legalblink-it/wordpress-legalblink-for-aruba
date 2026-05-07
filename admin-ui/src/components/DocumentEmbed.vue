@@ -110,16 +110,25 @@
   }
 
   const loading = ref(false)
-  const currentDocument = computed<PolicyDocument | null>(() => store.getDocument(type.value))
-  const copySnackbar = ref({
-    show: false,
-    message: '',
-  })
-
   // Accetta la prop type per il tipo documento
   const props = defineProps<{ type: PolicyKey }>()
   // Usa la prop type se fornita, altrimenti fallback a 'cookie_policy'
   const type = ref(props.type || 'cookie_policy')
+
+  // Source-of-truth resolver: GDPR documents come from `store.documents`,
+  // `accessibility_declaration` from `store.accessibilityDeclaration.document`
+  // (S#7701 mixed-mode keeps the two surfaces strictly separate).
+  const currentDocument = computed<PolicyDocument | null>(() => {
+    if (type.value === 'accessibility_declaration') {
+      const declaration = store.getAccessibilityDeclaration
+      return declaration?.available ? (declaration.document as unknown as PolicyDocument) : null
+    }
+    return store.getDocument(type.value)
+  })
+  const copySnackbar = ref({
+    show: false,
+    message: '',
+  })
 
   const filteredDocuments = computed(() => {
     if (!currentDocument.value) return []
@@ -175,6 +184,9 @@
       }
       case 'terms_of_service': {
         return 'Condizioni generali di vendita'
+      }
+      case 'accessibility_declaration': {
+        return 'Dichiarazione di accessibilità'
       }
       default: {
         return 'Documento'
