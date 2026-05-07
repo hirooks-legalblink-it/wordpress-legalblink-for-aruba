@@ -57,6 +57,15 @@
           {{ serviceStatusError }}
         </v-alert>
 
+        <v-alert
+          v-else-if="capabilitiesError"
+          class="ma-4"
+          type="error"
+          variant="tonal"
+        >
+          {{ capabilitiesError }}
+        </v-alert>
+
         <template v-else>
           <!-- Seconda riga: Blocco contenuto sottostante -->
 
@@ -161,6 +170,7 @@
 
   const branding = computed(() => store.getBranding)
   const serviceStatusError = computed(() => store.getError)
+  const capabilitiesError = computed(() => store.getCapabilitiesError)
   const selectedLanguage = computed(() => store.getSelectedLanguage)
   const cookiePolicyUrl = computed(() => {
     const document = store.getDocument('cookie_policy')
@@ -218,14 +228,28 @@
     { label: 'Cache', value: 'cache' },
   ]
 
+  // S#7701 capability-driven gating: tab visibility derives from
+  // `store.capabilities` (resolved post-auth via `loadCapabilities`), not from
+  // the GDPR document whitelist. Accessibility tabs land in follow-up PRs and
+  // are gated on `features.accessibilityDeclaration` / `accessibilityWidget`.
   const tabs = computed(() => {
     return allTabs.filter(tab => {
-      if (tab.value === 'cookie_banner' || tab.value === 'cache') {
+      if (tab.value === 'cache') {
         return true
       }
 
-      const document = store.getDocument(tab.value as any)
-      return document !== null
+      if (tab.value === 'cookie_banner') {
+        return store.isGdprEnabled
+      }
+
+      if (tab.value === 'cookie_policy' || tab.value === 'privacy_policy' || tab.value === 'terms_of_service') {
+        if (!store.isGdprEnabled) {
+          return false
+        }
+        return store.getDocument(tab.value as any) !== null
+      }
+
+      return false
     })
   })
 

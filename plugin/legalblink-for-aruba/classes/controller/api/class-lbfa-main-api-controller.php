@@ -18,6 +18,7 @@ if (!class_exists('LBFA_Main_API_Controller')) {
         private $auth_controller;
         private $external_controller;
         private $document_controller;
+        private $capability_controller;
 
         private static $instance;
 
@@ -42,6 +43,7 @@ if (!class_exists('LBFA_Main_API_Controller')) {
             $this->auth_controller = new LBFA_Auth_API_Controller();
             $this->external_controller = new LBFA_External_API_Controller();
             $this->document_controller = new LBFA_Document_API_Controller();
+            $this->capability_controller = new LBFA_Capability_API_Controller();
 
             // Register main API routes
             add_action('rest_api_init', array($this, 'register_routes'));
@@ -57,6 +59,7 @@ if (!class_exists('LBFA_Main_API_Controller')) {
             $this->auth_controller->register_routes();
             $this->external_controller->register_routes();
             $this->document_controller->register_routes();
+            $this->capability_controller->register_routes();
         }
 
         /**

@@ -105,7 +105,7 @@
           <div class="text-caption">
             <v-divider class="mt-1" />
             <template v-if="policyPage">
-              <a class="text-primary text-decoration-none" :href="editPagesUrl" target="_blank" rel="noopener noreferrer">
+              <a class="text-primary text-decoration-none" :href="editPagesUrl" rel="noopener noreferrer" target="_blank">
                 Verifica le pagine CMS del tuo sito
               </a><br>
               <span class="text-error">

@@ -143,6 +143,37 @@ cd admin-ui
 npm run dev
 ```
 
+#### Local Backend (S#7701 mixed-mode)
+
+To exercise the new mixed-mode endpoints (`/capabilities`, `/accessibility/*`,
+`/cookie-solution/embed-v2`) point the plugin at the platform's local-safe
+Docker stack instead of production:
+
+1. In `plugin/legalblink-for-aruba/config.example.php`, set
+   `'base_url' => 'http://host.docker.internal:3001/integrations/wordpress'`
+   (or `http://localhost:3001/...` if the plugin runs on the host).
+2. Boot the backend safe stack and seed a scenario:
+   ```bash
+   # in the platform repo, src/
+   docker compose --env-file .env.docker-local-safe \
+       -f docker-compose.dev.yml -f docker-compose.local-safe.yml up --build -d
+   # in src/back-end
+   npm run seed:wordpress-integration                     # default: hybrid
+   npm run seed:wordpress-integration -- --scenario=widget-domain-mismatch
+   ```
+3. Use the seed output (`wpAuthAccessToken`, `requestDomain`) to authenticate
+   the plugin via `POST /auth` with the local API key `local-wp-api-key`.
+
+#### Running tests
+
+```bash
+# PHP unit tests (requires composer install once)
+cd plugin/legalblink-for-aruba && composer install && composer test
+
+# Admin UI unit tests (requires npm install once)
+cd admin-ui && npm install && npm test
+```
+
 ### 🧰 Tech Stack
 
 **Frontend (Admin UI)**:

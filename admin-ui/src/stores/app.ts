@@ -1,4 +1,5 @@
 import type { BannerData } from '@/services/BannerService'
+import type { Capabilities } from '@/services/CapabilityService'
 import type { PolicyDocument, PolicyKey } from '@/services/DocumentService'
 import type { UpdatePageRequest, WordPressPage } from '@/services/SettingsService'
 // Utilities
@@ -10,6 +11,7 @@ import {
   type BrandingData,
   brandingService,
   cacheService, type CacheSettings,
+  capabilityService,
   documentService,
   type Language,
   settingsService,
@@ -48,6 +50,9 @@ export const useAppStore = defineStore('app', {
     isLoadingLanguages: false,
     languagesError: null as string | null,
     selectedLanguage: 'it',
+    capabilities: null as Capabilities | null,
+    isLoadingCapabilities: false,
+    capabilitiesError: null as string | null,
     documents: {} as Record<PolicyKey, PolicyDocument>,
     isLoadingDocuments: false,
     documentsError: null as string | null,
@@ -94,9 +99,37 @@ export const useAppStore = defineStore('app', {
     getBannerError: state => state.bannerError,
     getIsSavingBanner: state => state.isSavingBanner,
     getSaveBannerError: state => state.saveBannerError,
+    getCapabilities: state => state.capabilities,
+    getIsLoadingCapabilities: state => state.isLoadingCapabilities,
+    getCapabilitiesError: state => state.capabilitiesError,
+    isGdprEnabled: state => !!state.capabilities?.features.gdpr,
+    isAccessibilityEnabled: state => !!state.capabilities?.features.accessibility,
+    isAccessibilityDeclarationEnabled: state => !!state.capabilities?.features.accessibilityDeclaration,
+    isAccessibilityWidgetEnabled: state => !!state.capabilities?.features.accessibilityWidget,
+    isCookieBannerV2Enabled: state => !!state.capabilities?.features.cookieBannerV2,
   },
 
   actions: {
+    async loadCapabilities () {
+      this.isLoadingCapabilities = true
+      this.capabilitiesError = null
+
+      try {
+        const response = await capabilityService.getCapabilities()
+        if (response.success && response.data) {
+          this.capabilities = response.data
+        } else {
+          this.capabilities = null
+          this.capabilitiesError = response.errors?.[0] || response.message || 'Errore nel caricamento delle capability'
+        }
+      } catch (error) {
+        this.capabilities = null
+        this.capabilitiesError = error instanceof Error ? error.message : 'Errore nel caricamento delle capability'
+      } finally {
+        this.isLoadingCapabilities = false
+      }
+    },
+
     async loadBranding () {
       this.isLoadingBranding = true
       this.brandingError = null
@@ -255,19 +288,32 @@ export const useAppStore = defineStore('app', {
       }
     },
 
-    setAuthenticated (status: boolean) {
+    async setAuthenticated (status: boolean) {
       this.isAuthenticated = status
 
-      if (status) {
-        // load all data when authenticated
-        this.loadBranding().then()
-        this.loadLanguages().then()
+      if (!status) {
+        this.clearAll()
+        return
+      }
+
+      // Always load branding/languages/cache/capabilities/pages — these are needed
+      // regardless of the GDPR/accessibility feature mix.
+      this.loadBranding().then()
+      this.loadLanguages().then()
+      this.loadCacheSettings().then()
+      this.loadWordPressPages().then()
+
+      // Capabilities must be resolved before any feature-specific loader so we
+      // never fetch GDPR documents for an accessibility-only account or vice
+      // versa (S#7701: capability-driven gating, no inference from documents).
+      await this.loadCapabilities()
+
+      if (this.isGdprEnabled) {
         this.loadDocuments().then()
-        this.loadWordPressPages().then()
-        this.loadCacheSettings().then()
         this.loadCookieBannerData().then()
       } else {
-        this.clearAll()
+        this.clearDocuments()
+        this.clearBanner()
       }
     },
 
@@ -320,6 +366,12 @@ export const useAppStore = defineStore('app', {
       this.saveBannerError = null
     },
 
+    clearCapabilities () {
+      this.capabilities = null
+      this.capabilitiesError = null
+      this.isLoadingCapabilities = false
+    },
+
     clearAll () {
       this.clearAuth()
       this.clearBranding()
@@ -328,6 +380,7 @@ export const useAppStore = defineStore('app', {
       this.clearWordPressPages()
       this.clearCacheSettings()
       this.clearBanner()
+      this.clearCapabilities()
     },
   },
 })
