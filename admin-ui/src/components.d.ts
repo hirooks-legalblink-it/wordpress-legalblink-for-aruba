@@ -8,6 +8,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AccessibilityWidgetSettingsCard: typeof import('./components/AccessibilityWidgetSettingsCard.vue')['default']
     CacheSettingsCard: typeof import('./components/CacheSettingsCard.vue')['default']
     CookieBannerSettingsCard: typeof import('./components/CookieBannerSettingsCard.vue')['default']
     DocumentEmbed: typeof import('./components/DocumentEmbed.vue')['default']
