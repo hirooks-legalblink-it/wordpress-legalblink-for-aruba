@@ -13,34 +13,14 @@ namespace LegalBlink\Tests\Unit;
 
 use Brain\Monkey\Functions;
 use LBFA_Capability_API_Controller;
+use LBFA_Config_Helper;
+use LBFA_Option_Helper;
+use LBFA_Transient_Helper;
 use LegalBlink\Tests\TestCase;
 use Mockery;
 use WP_Error;
-use WP_REST_Response;
 
 require_once dirname(__DIR__, 2) . '/classes/controller/api/class-lbfa-capability-api-controller.php';
-
-if (!class_exists(WP_REST_Response::class, false)) {
-    /**
-     * Minimal stand-in for the WP REST Response — Brain\Monkey does not
-     * provide WordPress core classes, so we shim the surface used by the
-     * base controller (status + data accessor).
-     */
-    class WP_REST_Response
-    {
-        public function __construct(public $data = null, public int $status = 200) {}
-        public function get_data() { return $this->data; }
-        public function get_status(): int { return $this->status; }
-    }
-}
-
-if (!class_exists(WP_Error::class, false)) {
-    class WP_Error
-    {
-        public function __construct(public string $code = '', public string $message = '', public array $data = []) {}
-        public function get_error_message(): string { return $this->message; }
-    }
-}
 
 class CapabilityApiControllerTest extends TestCase
 {
@@ -48,38 +28,15 @@ class CapabilityApiControllerTest extends TestCase
     {
         parent::set_up();
 
-        // Translations: pass-through.
+        LBFA_Option_Helper::reset();
+        LBFA_Transient_Helper::reset();
+        LBFA_Config_Helper::reset();
+
         Functions\when('__')->returnArg(1);
-        Functions\when('sprintf')->alias(static fn (...$args) => sprintf(...$args));
-        Functions\when('wp_json_encode')->alias(static fn ($value) => json_encode($value));
-        Functions\when('current_time')->justReturn(0);
-        Functions\when('maybe_serialize')->alias(static fn ($value) => is_scalar($value) ? (string) $value : serialize($value));
         Functions\when('is_wp_error')->alias(static fn ($value) => $value instanceof WP_Error);
         Functions\when('wp_remote_retrieve_response_code')->alias(static fn ($response) => $response['response']['code'] ?? 0);
         Functions\when('wp_remote_retrieve_body')->alias(static fn ($response) => $response['body'] ?? '');
-        Functions\when('get_site_option')->justReturn(false);
-        Functions\when('update_site_option')->justReturn(true);
-        Functions\when('get_option')->justReturn(false);
-        Functions\when('update_option')->justReturn(true);
-        Functions\when('get_transient')->justReturn(false);
-        Functions\when('set_transient')->justReturn(true);
-        Functions\when('delete_transient')->justReturn(true);
-        Functions\when('get_site_transient')->justReturn(false);
-        Functions\when('set_site_transient')->justReturn(true);
-        Functions\when('delete_site_transient')->justReturn(true);
-        Functions\when('is_multisite')->justReturn(false);
-
-        // Logger: silence info/warning/error/debug.
-        Functions\when('LBFA_Logger::info')->justReturn(null);
-        Functions\when('LBFA_Logger::warning')->justReturn(null);
-        Functions\when('LBFA_Logger::error')->justReturn(null);
-        Functions\when('LBFA_Logger::debug')->justReturn(null);
-
-        // Config defaults so static helpers work without loading config.php.
-        Functions\when('LBFA_Config_Helper::get_api_namespace')->justReturn('lbfa/v1');
-        Functions\when('LBFA_Config_Helper::get_api_base_url')->justReturn('https://backend.example.test/integrations/wordpress');
-        Functions\when('LBFA_Config_Helper::get_api_cache_time')->justReturn(3600);
-        Functions\when('LBFA_Config_Helper::get_api_rate_limit')->justReturn(60);
+        Functions\when('wp_json_encode')->alias(static fn ($value) => json_encode($value));
     }
 
     protected function tear_down(): void
@@ -104,20 +61,16 @@ class CapabilityApiControllerTest extends TestCase
             );
 
         (new LBFA_Capability_API_Controller())->register_routes();
+        $this->addToAssertionCount(1);
     }
 
     public function testGetCapabilitiesReturnsErrorWhenJwtMissing(): void
     {
-        // No token + no cache hit forces the missing-credentials path.
-        Functions\when('LBFA_Option_Helper::getOption')->justReturn('');
-        Functions\when('LBFA_Transient_Helper::get')->justReturn(false);
         Functions\expect('wp_remote_get')->never();
 
-        $controller = new LBFA_Capability_API_Controller();
-        $response = $controller->get_capabilities();
-
-        $this->assertInstanceOf(WP_REST_Response::class, $response);
+        $response = (new LBFA_Capability_API_Controller())->get_capabilities();
         $payload = $response->get_data();
+
         $this->assertFalse($payload['success']);
         $this->assertNotEmpty($payload['errors']);
     }
@@ -125,23 +78,19 @@ class CapabilityApiControllerTest extends TestCase
     public function testGetCapabilitiesShortCircuitsOnCacheHit(): void
     {
         $cached = $this->normalizedFixture();
-
-        Functions\when('LBFA_Option_Helper::getOption')->justReturn('jwt-token');
-        Functions\when('LBFA_Transient_Helper::get')->justReturn($cached);
+        LBFA_Option_Helper::$__options['jwt_token'] = 'jwt-token';
+        LBFA_Transient_Helper::$__cache['capabilities'] = $cached;
         Functions\expect('wp_remote_get')->never();
 
-        $controller = new LBFA_Capability_API_Controller();
-        $response = $controller->get_capabilities();
+        $payload = (new LBFA_Capability_API_Controller())->get_capabilities()->get_data();
 
-        $payload = $response->get_data();
         $this->assertTrue($payload['success']);
         $this->assertSame($cached, $payload['data']);
     }
 
     public function testGetCapabilitiesHitsBackendOnCacheMissAndCachesResult(): void
     {
-        Functions\when('LBFA_Option_Helper::getOption')->justReturn('jwt-token');
-        Functions\when('LBFA_Transient_Helper::get')->justReturn(false);
+        LBFA_Option_Helper::$__options['jwt_token'] = 'jwt-token';
 
         $remoteBody = json_encode($this->normalizedFixture());
         Functions\expect('wp_remote_get')
@@ -154,38 +103,30 @@ class CapabilityApiControllerTest extends TestCase
             )
             ->andReturn(['response' => ['code' => 200], 'body' => $remoteBody]);
 
-        Functions\expect('LBFA_Transient_Helper::set')
-            ->once()
-            ->with('capabilities', Mockery::type('array'), Mockery::type('integer'))
-            ->andReturn(true);
+        $payload = (new LBFA_Capability_API_Controller())->get_capabilities()->get_data();
 
-        $controller = new LBFA_Capability_API_Controller();
-        $response = $controller->get_capabilities();
-
-        $payload = $response->get_data();
         $this->assertTrue($payload['success']);
         $this->assertSame('hybrid', $payload['data']['mode']);
         $this->assertTrue($payload['data']['features']['gdpr']);
         $this->assertTrue($payload['data']['features']['accessibilityWidget']);
+
+        // Result must have been written to the transient stub.
+        $this->assertSame($payload['data'], LBFA_Transient_Helper::$__cache['capabilities']);
+        $this->assertNotEmpty(LBFA_Transient_Helper::$__sets);
     }
 
     public function testGetCapabilitiesMapsBackendErrorToErrorResponse(): void
     {
-        Functions\when('LBFA_Option_Helper::getOption')->justReturn('jwt-token');
-        Functions\when('LBFA_Transient_Helper::get')->justReturn(false);
+        LBFA_Option_Helper::$__options['jwt_token'] = 'jwt-token';
 
         Functions\expect('wp_remote_get')
             ->once()
             ->andReturn(['response' => ['code' => 401], 'body' => json_encode(['error' => 'unauthorized'])]);
 
-        Functions\expect('LBFA_Transient_Helper::set')->never();
-
-        $controller = new LBFA_Capability_API_Controller();
-        $response = $controller->get_capabilities();
-
-        $payload = $response->get_data();
+        $payload = (new LBFA_Capability_API_Controller())->get_capabilities()->get_data();
         $this->assertFalse($payload['success']);
         $this->assertNotEmpty($payload['errors']);
+        $this->assertArrayNotHasKey('capabilities', LBFA_Transient_Helper::$__cache);
     }
 
     public function testNormalizeCapabilitiesAppliesDefaultsForMissingFields(): void
@@ -195,7 +136,6 @@ class CapabilityApiControllerTest extends TestCase
         $normalized = $controller->normalize_capabilities([
             'mode' => 'gdpr-only',
             'features' => ['gdpr' => true],
-            // documents/resources/warnings intentionally missing
         ]);
 
         $this->assertSame('gdpr-only', $normalized['mode']);
@@ -209,9 +149,7 @@ class CapabilityApiControllerTest extends TestCase
 
     public function testNormalizeCapabilitiesPreservesWidgetWarning(): void
     {
-        $controller = new LBFA_Capability_API_Controller();
-
-        $normalized = $controller->normalize_capabilities([
+        $normalized = (new LBFA_Capability_API_Controller())->normalize_capabilities([
             'mode' => 'hybrid',
             'features' => ['accessibilityWidget' => true],
             'warnings' => ['accessibilityWidget' => 'configuration_expired'],

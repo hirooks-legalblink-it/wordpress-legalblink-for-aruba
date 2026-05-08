@@ -2,6 +2,10 @@
  * Vitest setup: provides the `window.lbfa` and `window.LB_I18N` globals that
  * BaseApiService and several components rely on when running outside of the
  * WordPress admin shell.
+ *
+ * Globals are installed at module top-level so they are present BEFORE the
+ * service singletons are constructed at module import time. A `beforeEach`
+ * resets the values so cross-test mutations cannot leak.
  */
 
 declare global {
@@ -15,7 +19,7 @@ declare global {
   }
 }
 
-beforeEach(() => {
+const installLbfaGlobals = () => {
   Object.defineProperty(window, 'lbfa', {
     value: {
       root: 'http://localhost/wp-json/lbfa/v1',
@@ -31,6 +35,13 @@ beforeEach(() => {
     writable: true,
     configurable: true,
   })
+}
+
+// Top-level install so service singletons see `window.lbfa` at import time.
+installLbfaGlobals()
+
+beforeEach(() => {
+  installLbfaGlobals()
 })
 
 export {}

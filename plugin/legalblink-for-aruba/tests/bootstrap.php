@@ -35,9 +35,10 @@ if (!file_exists($autoloader)) {
 
 require_once $autoloader;
 
-require_once dirname(__DIR__) . '/classes/helper/class-lbfa-multisite-helper.php';
-require_once dirname(__DIR__) . '/classes/helper/class-lbfa-config-helper.php';
-require_once dirname(__DIR__) . '/classes/helper/class-lbfa-option-helper.php';
-require_once dirname(__DIR__) . '/classes/helper/class-lbfa-transient-helper.php';
-require_once dirname(__DIR__) . '/classes/class-lbfa-logger.php';
+// Test stubs replace the real LBFA helper classes (Brain\Monkey can't mock
+// static methods), so we DO NOT require the real classes/helper/*.php files.
+// The base controller is required because it has no static dependencies that
+// touch the WP core or filesystem.
+require_once __DIR__ . '/Stubs.php';
+
 require_once dirname(__DIR__) . '/classes/controller/api/class-lbfa-base-api-controller.php';

@@ -14,40 +14,15 @@ namespace LegalBlink\Tests\Unit;
 
 use Brain\Monkey\Functions;
 use LBFA_Accessibility_API_Controller;
+use LBFA_Config_Helper;
+use LBFA_Option_Helper;
+use LBFA_Transient_Helper;
 use LegalBlink\Tests\TestCase;
 use Mockery;
 use WP_Error;
 use WP_REST_Request;
-use WP_REST_Response;
 
 require_once dirname(__DIR__, 2) . '/classes/controller/api/class-lbfa-accessibility-api-controller.php';
-
-if (!class_exists(WP_REST_Response::class, false)) {
-    class WP_REST_Response
-    {
-        public function __construct(public $data = null, public int $status = 200) {}
-        public function get_data() { return $this->data; }
-        public function get_status(): int { return $this->status; }
-    }
-}
-
-if (!class_exists(WP_Error::class, false)) {
-    class WP_Error
-    {
-        public function __construct(public string $code = '', public string $message = '', public array $data = []) {}
-        public function get_error_message(): string { return $this->message; }
-    }
-}
-
-if (!class_exists(WP_REST_Request::class, false)) {
-    class WP_REST_Request
-    {
-        public function __construct(private array $params = []) {}
-        public function get_param(string $key) { return $this->params[$key] ?? null; }
-        public function get_method(): string { return 'POST'; }
-        public function get_header(string $key): string { return ''; }
-    }
-}
 
 class AccessibilityDeclarationTest extends TestCase
 {
@@ -55,22 +30,14 @@ class AccessibilityDeclarationTest extends TestCase
     {
         parent::set_up();
 
+        LBFA_Option_Helper::reset();
+        LBFA_Transient_Helper::reset();
+        LBFA_Config_Helper::reset();
+
         Functions\when('__')->returnArg(1);
-        Functions\when('sprintf')->alias(static fn (...$args) => sprintf(...$args));
-        Functions\when('current_time')->justReturn(0);
-        Functions\when('maybe_serialize')->alias(static fn ($value) => is_scalar($value) ? (string) $value : serialize($value));
         Functions\when('is_wp_error')->alias(static fn ($value) => $value instanceof WP_Error);
         Functions\when('wp_remote_retrieve_response_code')->alias(static fn ($response) => $response['response']['code'] ?? 0);
         Functions\when('wp_remote_retrieve_body')->alias(static fn ($response) => $response['body'] ?? '');
-        Functions\when('is_multisite')->justReturn(false);
-        Functions\when('LBFA_Logger::info')->justReturn(null);
-        Functions\when('LBFA_Logger::warning')->justReturn(null);
-        Functions\when('LBFA_Logger::error')->justReturn(null);
-        Functions\when('LBFA_Logger::debug')->justReturn(null);
-        Functions\when('LBFA_Config_Helper::get_api_namespace')->justReturn('lbfa/v1');
-        Functions\when('LBFA_Config_Helper::get_api_base_url')->justReturn('https://backend.example.test/integrations/wordpress');
-        Functions\when('LBFA_Config_Helper::get_api_cache_time')->justReturn(3600);
-        Functions\when('LBFA_Config_Helper::get_api_rate_limit')->justReturn(60);
     }
 
     protected function tear_down(): void
@@ -82,26 +49,23 @@ class AccessibilityDeclarationTest extends TestCase
     public function testRegisterRoutesRegistersDeclarationGetAndUpdatePage(): void
     {
         Functions\expect('register_rest_route')
-            ->twice()
+            ->atLeast()
+            ->times(2)
             ->with(
                 'lbfa/v1',
-                Mockery::anyOf('/accessibility/declaration', '/accessibility/declaration/update-page'),
+                Mockery::anyOf('/accessibility/declaration', '/accessibility/declaration/update-page', '/accessibility/widget'),
                 Mockery::type('array')
             );
 
         (new LBFA_Accessibility_API_Controller())->register_routes();
+        $this->addToAssertionCount(1);
     }
 
     public function testGetDeclarationReturnsErrorWhenJwtMissing(): void
     {
-        Functions\when('LBFA_Option_Helper::getOption')->justReturn('');
-        Functions\when('LBFA_Option_Helper::getLanguageOption')->justReturn('0');
-        Functions\when('LBFA_Transient_Helper::get')->justReturn(false);
         Functions\expect('wp_remote_get')->never();
 
-        $response = (new LBFA_Accessibility_API_Controller())->get_declaration();
-
-        $payload = $response->get_data();
+        $payload = (new LBFA_Accessibility_API_Controller())->get_declaration()->get_data();
         $this->assertFalse($payload['success']);
         $this->assertNotEmpty($payload['errors']);
     }
@@ -110,17 +74,15 @@ class AccessibilityDeclarationTest extends TestCase
     {
         $cached = $this->normalizedFixture();
 
-        Functions\when('LBFA_Option_Helper::getOption')->justReturn('jwt-token');
-        Functions\when('LBFA_Transient_Helper::get')->justReturn($cached);
-        Functions\when('LBFA_Option_Helper::getLanguageOption')->alias(static function ($key, $iso, $default = '') {
-            if ($key === 'page_accessibility_declaration_id' && $iso === 'it') return '42';
-            if ($key === 'page_accessibility_declaration_use_html_snippet' && $iso === 'it') return true;
-            return $default;
-        });
+        LBFA_Option_Helper::$__options = [
+            'jwt_token' => 'jwt-token',
+            'page_accessibility_declaration_id_it' => '42',
+            'page_accessibility_declaration_use_html_snippet_it' => true,
+        ];
+        LBFA_Transient_Helper::$__cache['accessibility_declaration'] = $cached;
         Functions\expect('wp_remote_get')->never();
 
-        $response = (new LBFA_Accessibility_API_Controller())->get_declaration();
-        $payload = $response->get_data();
+        $payload = (new LBFA_Accessibility_API_Controller())->get_declaration()->get_data();
 
         $this->assertTrue($payload['success']);
         $this->assertSame('42', $payload['data']['document']['languages']['it']['pageId']);
@@ -129,10 +91,7 @@ class AccessibilityDeclarationTest extends TestCase
 
     public function testGetDeclarationFetchesAndPersistsLanguageUrls(): void
     {
-        Functions\when('LBFA_Option_Helper::getOption')->justReturn('jwt-token');
-        Functions\when('LBFA_Transient_Helper::get')->justReturn(false);
-        Functions\when('LBFA_Option_Helper::getLanguageOption')->justReturn('0');
-        Functions\when('LBFA_Transient_Helper::set')->justReturn(true);
+        LBFA_Option_Helper::$__options['jwt_token'] = 'jwt-token';
 
         Functions\expect('wp_remote_get')
             ->once()
@@ -145,33 +104,35 @@ class AccessibilityDeclarationTest extends TestCase
                 'body' => json_encode($this->normalizedFixture()),
             ]);
 
-        Functions\expect('LBFA_Option_Helper::setLanguageOption')
-            ->atLeast()
-            ->once()
-            ->with('documents_accessibility_declaration_html_url', 'https://example.test/it.html', 'it')
-            ->andReturn(true);
-
-        $response = (new LBFA_Accessibility_API_Controller())->get_declaration();
-        $payload = $response->get_data();
+        $payload = (new LBFA_Accessibility_API_Controller())->get_declaration()->get_data();
 
         $this->assertTrue($payload['success']);
         $this->assertTrue($payload['data']['available']);
+        // URL must have been persisted to the language-specific option.
+        $this->assertSame(
+            'https://example.test/it.html',
+            LBFA_Option_Helper::getLanguageOption('documents_accessibility_declaration_html_url', 'it')
+        );
+        $this->assertSame(
+            'https://example.test/en.html',
+            LBFA_Option_Helper::getLanguageOption('documents_accessibility_declaration_html_url', 'en')
+        );
+        // And the normalized payload cached for next call.
+        $this->assertArrayHasKey('accessibility_declaration', LBFA_Transient_Helper::$__cache);
     }
 
     public function testGetDeclarationMapsBackendErrorToErrorResponse(): void
     {
-        Functions\when('LBFA_Option_Helper::getOption')->justReturn('jwt-token');
-        Functions\when('LBFA_Option_Helper::getLanguageOption')->justReturn('0');
-        Functions\when('LBFA_Transient_Helper::get')->justReturn(false);
+        LBFA_Option_Helper::$__options['jwt_token'] = 'jwt-token';
 
         Functions\expect('wp_remote_get')
             ->once()
             ->andReturn(['response' => ['code' => 502], 'body' => '{}']);
-        Functions\expect('LBFA_Transient_Helper::set')->never();
 
         $payload = (new LBFA_Accessibility_API_Controller())->get_declaration()->get_data();
         $this->assertFalse($payload['success']);
         $this->assertNotEmpty($payload['errors']);
+        $this->assertArrayNotHasKey('accessibility_declaration', LBFA_Transient_Helper::$__cache);
     }
 
     public function testNormalizeDeclarationReturnsUnavailableWhenAvailableIsFalse(): void
@@ -206,9 +167,8 @@ class AccessibilityDeclarationTest extends TestCase
 
     public function testUpdateDeclarationPageWithZeroPageIdClearsOptions(): void
     {
-        Functions\expect('LBFA_Option_Helper::setLanguageOption')
-            ->twice()
-            ->andReturn(true);
+        LBFA_Option_Helper::$__options['page_accessibility_declaration_id_it'] = 99;
+        LBFA_Option_Helper::$__options['page_accessibility_declaration_use_html_snippet_it'] = true;
         Functions\expect('get_post')->never();
         Functions\expect('wp_update_post')->never();
 
@@ -220,15 +180,14 @@ class AccessibilityDeclarationTest extends TestCase
 
         $payload = (new LBFA_Accessibility_API_Controller())->update_declaration_page($request)->get_data();
         $this->assertTrue($payload['success']);
+        $this->assertSame(0, LBFA_Option_Helper::getLanguageOption('page_accessibility_declaration_id', 'it'));
+        $this->assertFalse(LBFA_Option_Helper::getLanguageOption('page_accessibility_declaration_use_html_snippet', 'it'));
     }
 
     public function testUpdateDeclarationPageWritesShortcodeAndPersistsOptions(): void
     {
         Functions\when('get_post')->justReturn((object) ['ID' => 99]);
         Functions\when('wp_update_post')->justReturn(99);
-        Functions\expect('LBFA_Option_Helper::setLanguageOption')
-            ->twice()
-            ->andReturn(true);
 
         $request = new WP_REST_Request([
             'page_id' => 99,
@@ -238,6 +197,8 @@ class AccessibilityDeclarationTest extends TestCase
 
         $payload = (new LBFA_Accessibility_API_Controller())->update_declaration_page($request)->get_data();
         $this->assertTrue($payload['success']);
+        $this->assertSame(99, LBFA_Option_Helper::getLanguageOption('page_accessibility_declaration_id', 'en'));
+        $this->assertTrue(LBFA_Option_Helper::getLanguageOption('page_accessibility_declaration_use_html_snippet', 'en'));
     }
 
     public function testUpdateDeclarationPageRejectsMissingPage(): void

@@ -1,9 +1,15 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const loadCapabilitiesMock = vi.fn()
-const getWidgetMock = vi.fn()
-const setWidgetEnabledMock = vi.fn()
+const {
+  loadCapabilitiesMock,
+  getWidgetMock,
+  setWidgetEnabledMock,
+} = vi.hoisted(() => ({
+  loadCapabilitiesMock: vi.fn(),
+  getWidgetMock: vi.fn(),
+  setWidgetEnabledMock: vi.fn(),
+}))
 
 vi.mock('@/services', async () => {
   const actual = await vi.importActual<typeof import('@/services')>('@/services')

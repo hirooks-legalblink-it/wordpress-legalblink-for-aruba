@@ -15,6 +15,7 @@ namespace LegalBlink\Tests\Unit;
 use Brain\Monkey\Functions;
 use LBFA_Capability_API_Controller;
 use LBFA_Frontend_Manager;
+use LBFA_Transient_Helper;
 use LegalBlink\Tests\TestCase;
 use Mockery;
 
@@ -27,15 +28,10 @@ class CookieBannerV2DispatchTest extends TestCase
     {
         parent::set_up();
 
+        LBFA_Transient_Helper::reset();
+
         Functions\when('__')->returnArg(1);
         Functions\when('add_action')->justReturn(true);
-        Functions\when('current_time')->justReturn(0);
-        Functions\when('maybe_serialize')->alias(static fn ($value) => is_scalar($value) ? (string) $value : serialize($value));
-        Functions\when('is_multisite')->justReturn(false);
-        Functions\when('LBFA_Logger::info')->justReturn(null);
-        Functions\when('LBFA_Logger::warning')->justReturn(null);
-        Functions\when('LBFA_Logger::error')->justReturn(null);
-        Functions\when('LBFA_Logger::debug')->justReturn(null);
     }
 
     protected function tear_down(): void
@@ -46,22 +42,20 @@ class CookieBannerV2DispatchTest extends TestCase
 
     public function testIsFeatureEnabledReturnsFalseWhenCapabilitiesUnresolved(): void
     {
-        Functions\when('LBFA_Transient_Helper::get')->justReturn(false);
-
         $this->assertFalse(LBFA_Capability_API_Controller::is_feature_enabled('cookieBannerV2'));
         $this->assertFalse(LBFA_Capability_API_Controller::is_feature_enabled('gdpr'));
     }
 
     public function testIsFeatureEnabledReturnsFalseWhenCapabilitiesNotArray(): void
     {
-        Functions\when('LBFA_Transient_Helper::get')->justReturn('not-an-array');
+        LBFA_Transient_Helper::$__cache['capabilities'] = 'not-an-array';
 
         $this->assertFalse(LBFA_Capability_API_Controller::is_feature_enabled('cookieBannerV2'));
     }
 
     public function testIsFeatureEnabledReadsCachedFeatures(): void
     {
-        $cached = [
+        LBFA_Transient_Helper::$__cache['capabilities'] = [
             'mode' => 'hybrid',
             'features' => [
                 'gdpr' => true,
@@ -75,8 +69,6 @@ class CookieBannerV2DispatchTest extends TestCase
             'warnings' => ['accessibilityWidget' => null],
         ];
 
-        Functions\when('LBFA_Transient_Helper::get')->justReturn($cached);
-
         $this->assertTrue(LBFA_Capability_API_Controller::is_feature_enabled('cookieBannerV2'));
         $this->assertTrue(LBFA_Capability_API_Controller::is_feature_enabled('gdpr'));
         $this->assertFalse(LBFA_Capability_API_Controller::is_feature_enabled('accessibility'));
@@ -84,35 +76,33 @@ class CookieBannerV2DispatchTest extends TestCase
 
     public function testIsFeatureEnabledReturnsFalseForUnknownFeature(): void
     {
-        Functions\when('LBFA_Transient_Helper::get')->justReturn([
+        LBFA_Transient_Helper::$__cache['capabilities'] = [
             'features' => ['gdpr' => true],
-        ]);
+        ];
 
         $this->assertFalse(LBFA_Capability_API_Controller::is_feature_enabled('nonexistent'));
     }
 
     public function testFrontendShouldUseBannerV2DelegatesToCapability(): void
     {
-        Functions\when('LBFA_Transient_Helper::get')->justReturn([
+        LBFA_Transient_Helper::$__cache['capabilities'] = [
             'features' => ['cookieBannerV2' => true],
-        ]);
+        ];
 
         $this->assertTrue(LBFA_Frontend_Manager::should_use_banner_v2());
     }
 
     public function testFrontendShouldUseBannerV2FalseWhenCapabilityFalse(): void
     {
-        Functions\when('LBFA_Transient_Helper::get')->justReturn([
+        LBFA_Transient_Helper::$__cache['capabilities'] = [
             'features' => ['cookieBannerV2' => false],
-        ]);
+        ];
 
         $this->assertFalse(LBFA_Frontend_Manager::should_use_banner_v2());
     }
 
     public function testFrontendShouldUseBannerV2FalseWhenCapabilitiesMissing(): void
     {
-        Functions\when('LBFA_Transient_Helper::get')->justReturn(false);
-
         $this->assertFalse(LBFA_Frontend_Manager::should_use_banner_v2());
     }
 }

@@ -14,40 +14,15 @@ namespace LegalBlink\Tests\Unit;
 
 use Brain\Monkey\Functions;
 use LBFA_Accessibility_API_Controller;
+use LBFA_Config_Helper;
+use LBFA_Option_Helper;
+use LBFA_Transient_Helper;
 use LegalBlink\Tests\TestCase;
 use Mockery;
 use WP_Error;
 use WP_REST_Request;
-use WP_REST_Response;
 
 require_once dirname(__DIR__, 2) . '/classes/controller/api/class-lbfa-accessibility-api-controller.php';
-
-if (!class_exists(WP_REST_Response::class, false)) {
-    class WP_REST_Response
-    {
-        public function __construct(public $data = null, public int $status = 200) {}
-        public function get_data() { return $this->data; }
-        public function get_status(): int { return $this->status; }
-    }
-}
-
-if (!class_exists(WP_Error::class, false)) {
-    class WP_Error
-    {
-        public function __construct(public string $code = '', public string $message = '', public array $data = []) {}
-        public function get_error_message(): string { return $this->message; }
-    }
-}
-
-if (!class_exists(WP_REST_Request::class, false)) {
-    class WP_REST_Request
-    {
-        public function __construct(private array $params = []) {}
-        public function get_param(string $key) { return $this->params[$key] ?? null; }
-        public function get_method(): string { return 'PUT'; }
-        public function get_header(string $key): string { return ''; }
-    }
-}
 
 class AccessibilityWidgetTest extends TestCase
 {
@@ -55,22 +30,14 @@ class AccessibilityWidgetTest extends TestCase
     {
         parent::set_up();
 
+        LBFA_Option_Helper::reset();
+        LBFA_Transient_Helper::reset();
+        LBFA_Config_Helper::reset();
+
         Functions\when('__')->returnArg(1);
-        Functions\when('sprintf')->alias(static fn (...$args) => sprintf(...$args));
-        Functions\when('current_time')->justReturn(0);
-        Functions\when('maybe_serialize')->alias(static fn ($value) => is_scalar($value) ? (string) $value : serialize($value));
         Functions\when('is_wp_error')->alias(static fn ($value) => $value instanceof WP_Error);
         Functions\when('wp_remote_retrieve_response_code')->alias(static fn ($response) => $response['response']['code'] ?? 0);
         Functions\when('wp_remote_retrieve_body')->alias(static fn ($response) => $response['body'] ?? '');
-        Functions\when('is_multisite')->justReturn(false);
-        Functions\when('LBFA_Logger::info')->justReturn(null);
-        Functions\when('LBFA_Logger::warning')->justReturn(null);
-        Functions\when('LBFA_Logger::error')->justReturn(null);
-        Functions\when('LBFA_Logger::debug')->justReturn(null);
-        Functions\when('LBFA_Config_Helper::get_api_namespace')->justReturn('lbfa/v1');
-        Functions\when('LBFA_Config_Helper::get_api_base_url')->justReturn('https://backend.example.test/integrations/wordpress');
-        Functions\when('LBFA_Config_Helper::get_api_cache_time')->justReturn(3600);
-        Functions\when('LBFA_Config_Helper::get_api_rate_limit')->justReturn(60);
         Functions\when('sanitize_text_field')->returnArg(1);
         Functions\when('sanitize_email')->returnArg(1);
         Functions\when('esc_url_raw')->returnArg(1);
@@ -86,8 +53,6 @@ class AccessibilityWidgetTest extends TestCase
 
     public function testGetWidgetReturnsErrorWhenJwtMissing(): void
     {
-        Functions\when('LBFA_Option_Helper::getOption')->justReturn('');
-        Functions\when('LBFA_Transient_Helper::get')->justReturn(false);
         Functions\expect('wp_remote_get')->never();
 
         $payload = (new LBFA_Accessibility_API_Controller())->get_widget()->get_data();
@@ -97,15 +62,12 @@ class AccessibilityWidgetTest extends TestCase
 
     public function testGetWidgetCacheHitHydratesLocalToggle(): void
     {
-        $cached = $this->normalizedFixture(['localEnabled' => null]);
-        unset($cached['localEnabled']);
-
-        Functions\when('LBFA_Option_Helper::getOption')->alias(static function ($key, $default = null) {
-            if ($key === 'jwt_token') return 'jwt-token';
-            if ($key === 'accessibility_widget_enabled') return true;
-            return $default;
-        });
-        Functions\when('LBFA_Transient_Helper::get')->justReturn($cached);
+        $cached = $this->normalizedFixture();
+        LBFA_Option_Helper::$__options = [
+            'jwt_token' => 'jwt-token',
+            'accessibility_widget_enabled' => true,
+        ];
+        LBFA_Transient_Helper::$__cache['accessibility_widget_snippet'] = $cached;
         Functions\expect('wp_remote_get')->never();
 
         $payload = (new LBFA_Accessibility_API_Controller())->get_widget()->get_data();
@@ -117,12 +79,10 @@ class AccessibilityWidgetTest extends TestCase
 
     public function testGetWidgetFetchesAndCachesNormalizedPayload(): void
     {
-        Functions\when('LBFA_Option_Helper::getOption')->alias(static function ($key, $default = null) {
-            if ($key === 'jwt_token') return 'jwt-token';
-            if ($key === 'accessibility_widget_enabled') return false;
-            return $default;
-        });
-        Functions\when('LBFA_Transient_Helper::get')->justReturn(false);
+        LBFA_Option_Helper::$__options = [
+            'jwt_token' => 'jwt-token',
+            'accessibility_widget_enabled' => false,
+        ];
 
         Functions\expect('wp_remote_get')
             ->once()
@@ -141,31 +101,26 @@ class AccessibilityWidgetTest extends TestCase
                 ]),
             ]);
 
-        Functions\expect('LBFA_Transient_Helper::set')
-            ->once()
-            ->with('accessibility_widget_snippet', Mockery::type('array'), Mockery::type('integer'))
-            ->andReturn(true);
-
         $payload = (new LBFA_Accessibility_API_Controller())->get_widget()->get_data();
 
         $this->assertTrue($payload['success']);
         $this->assertTrue($payload['data']['configured']);
         $this->assertSame('example.com', $payload['data']['domain']);
         $this->assertFalse($payload['data']['localEnabled']);
+        $this->assertArrayHasKey('accessibility_widget_snippet', LBFA_Transient_Helper::$__cache);
     }
 
     public function testGetWidgetMapsBackendErrorToErrorResponse(): void
     {
-        Functions\when('LBFA_Option_Helper::getOption')->justReturn('jwt-token');
-        Functions\when('LBFA_Transient_Helper::get')->justReturn(false);
+        LBFA_Option_Helper::$__options['jwt_token'] = 'jwt-token';
 
         Functions\expect('wp_remote_get')
             ->once()
             ->andReturn(['response' => ['code' => 503], 'body' => '{}']);
-        Functions\expect('LBFA_Transient_Helper::set')->never();
 
         $payload = (new LBFA_Accessibility_API_Controller())->get_widget()->get_data();
         $this->assertFalse($payload['success']);
+        $this->assertArrayNotHasKey('accessibility_widget_snippet', LBFA_Transient_Helper::$__cache);
     }
 
     public function testNormalizeWidgetDropsInvalidWarnings(): void
@@ -179,7 +134,6 @@ class AccessibilityWidgetTest extends TestCase
         ]);
 
         $this->assertSame(['configuration_missing'], $normalized['warnings']);
-        // Configured must drop to false in presence of any warning.
         $this->assertFalse($normalized['configured']);
     }
 
@@ -199,40 +153,35 @@ class AccessibilityWidgetTest extends TestCase
 
     public function testSetWidgetLocalToggleStoresOption(): void
     {
-        Functions\expect('LBFA_Option_Helper::setOption')
-            ->once()
-            ->with('accessibility_widget_enabled', true)
-            ->andReturn(true);
-
         $request = new WP_REST_Request(['enabled' => true]);
         $payload = (new LBFA_Accessibility_API_Controller())->set_widget_local_toggle($request)->get_data();
 
         $this->assertTrue($payload['success']);
         $this->assertTrue($payload['data']['enabled']);
+        $this->assertTrue(LBFA_Option_Helper::getOption('accessibility_widget_enabled'));
     }
 
     public function testSetWidgetLocalToggleAcceptsFalse(): void
     {
-        Functions\expect('LBFA_Option_Helper::setOption')
-            ->once()
-            ->with('accessibility_widget_enabled', false)
-            ->andReturn(true);
+        // Pre-populate to verify the toggle actually flips the value.
+        LBFA_Option_Helper::$__options['accessibility_widget_enabled'] = true;
 
         $request = new WP_REST_Request(['enabled' => false]);
         $payload = (new LBFA_Accessibility_API_Controller())->set_widget_local_toggle($request)->get_data();
 
         $this->assertTrue($payload['success']);
         $this->assertFalse($payload['data']['enabled']);
+        $this->assertFalse(LBFA_Option_Helper::getOption('accessibility_widget_enabled'));
     }
 
-    private function normalizedFixture(array $overrides = []): array
+    private function normalizedFixture(): array
     {
-        return array_replace([
+        return [
             'available' => true,
             'configured' => true,
             'domain' => 'example.com',
             'html' => '<script></script>',
             'warnings' => [],
-        ], $overrides);
+        ];
     }
 }

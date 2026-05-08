@@ -1,13 +1,25 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const loadCapabilitiesMock = vi.fn()
-const loadDocumentsMock = vi.fn().mockResolvedValue(undefined)
-const loadCookieBannerMock = vi.fn().mockResolvedValue(undefined)
-const loadBrandingMock = vi.fn().mockResolvedValue(undefined)
-const loadLanguagesMock = vi.fn().mockResolvedValue(undefined)
-const loadCacheMock = vi.fn().mockResolvedValue(undefined)
-const loadPagesMock = vi.fn().mockResolvedValue(undefined)
+// vi.mock is hoisted above const declarations, so plain references would be
+// undefined at mock-factory time. vi.hoisted lifts the fns up alongside it.
+const {
+  loadCapabilitiesMock,
+  loadDocumentsMock,
+  loadCookieBannerMock,
+  loadBrandingMock,
+  loadLanguagesMock,
+  loadCacheMock,
+  loadPagesMock,
+} = vi.hoisted(() => ({
+  loadCapabilitiesMock: vi.fn(),
+  loadDocumentsMock: vi.fn().mockResolvedValue(undefined),
+  loadCookieBannerMock: vi.fn().mockResolvedValue(undefined),
+  loadBrandingMock: vi.fn().mockResolvedValue(undefined),
+  loadLanguagesMock: vi.fn().mockResolvedValue(undefined),
+  loadCacheMock: vi.fn().mockResolvedValue(undefined),
+  loadPagesMock: vi.fn().mockResolvedValue(undefined),
+}))
 
 vi.mock('@/services', async () => {
   const actual = await vi.importActual<typeof import('@/services')>('@/services')
