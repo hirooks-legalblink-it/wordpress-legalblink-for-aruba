@@ -98,14 +98,20 @@ if (!function_exists('qtranxf_getLanguage')) {
 
 /* ---------- TranslatePress ---------- */
 
-if (!class_exists('LBFA_Test_TRP_Translate_Press')) {
+if (!class_exists('TRP_Translate_Press')) {
     /**
-     * TranslatePress reads its instance via the global TRP_Translate_Press()
-     * function and accesses the url_converter component. We expose a tiny
-     * fake whose return value is configured per-test.
+     * Stand-in for the real TranslatePress class. The detector calls
+     * TRP_Translate_Press::get_trp_instance() then asks the instance for the
+     * `url_converter` component, which exposes get_lang_from_url_string().
+     * Each return value is driven by $GLOBALS['__lbfa_test_translation'].
      */
-    class LBFA_Test_TRP_Translate_Press
+    class TRP_Translate_Press
     {
+        public static function get_trp_instance(): self
+        {
+            return new self();
+        }
+
         public function get_component(string $name)
         {
             if ($name === 'url_converter') {
@@ -118,13 +124,5 @@ if (!class_exists('LBFA_Test_TRP_Translate_Press')) {
             }
             return null;
         }
-    }
-}
-
-if (!function_exists('TRP_Translate_Press')) {
-    function TRP_Translate_Press()
-    {
-        return $GLOBALS['__lbfa_test_translation']['trp_instance']
-            ?? new LBFA_Test_TRP_Translate_Press();
     }
 }
