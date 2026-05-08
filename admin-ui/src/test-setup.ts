@@ -6,15 +6,16 @@
  * Globals are installed at module top-level so they are present BEFORE the
  * service singletons are constructed at module import time. A `beforeEach`
  * resets the values so cross-test mutations cannot leak.
+ *
+ * The canonical `Window.lbfa` interface is declared in `src/global.d.ts`;
+ * we only extend it here with the optional `LB_I18N` global the components
+ * read for inline translations.
  */
+
+import { beforeEach } from 'vitest'
 
 declare global {
   interface Window {
-    lbfa: {
-      root: string
-      nonce: string
-      editPagesUrl?: string
-    }
     LB_I18N?: Record<string, string>
   }
 
@@ -28,6 +29,7 @@ const installLbfaGlobals = (
 ) => {
   Object.defineProperty(window, 'lbfa', {
     value: {
+      baseUrl: 'http://localhost',
       root: 'http://localhost/wp-json/lbfa/v1',
       nonce: 'test-nonce',
       editPagesUrl: 'http://localhost/wp-admin/edit.php?post_type=page',
