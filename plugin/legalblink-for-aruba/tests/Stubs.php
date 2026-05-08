@@ -14,98 +14,53 @@
 
 declare(strict_types=1);
 
-/* ------------------------------------------------------------------------- */
-/* WordPress core class shims (only the surface controllers actually use)    */
-/* ------------------------------------------------------------------------- */
-
-if (!class_exists('WP_REST_Response', false)) {
-    class WP_REST_Response
-    {
-        public $data;
-        public int $status;
-
-        public function __construct($data = null, int $status = 200)
-        {
-            $this->data = $data;
-            $this->status = $status;
-        }
-
-        public function get_data()
-        {
-            return $this->data;
-        }
-
-        public function get_status(): int
-        {
-            return $this->status;
-        }
-    }
-}
-
-if (!class_exists('WP_Error', false)) {
-    class WP_Error
-    {
-        public string $code;
-        public string $message;
-        public array $data;
-
-        public function __construct(string $code = '', string $message = '', array $data = [])
-        {
-            $this->code = $code;
-            $this->message = $message;
-            $this->data = $data;
-        }
-
-        public function get_error_message(): string
-        {
-            return $this->message;
-        }
-    }
-}
-
-if (!class_exists('WP_REST_Request', false)) {
-    class WP_REST_Request
-    {
-        private array $params;
-
-        public function __construct(array $params = [])
-        {
-            $this->params = $params;
-        }
-
-        public function get_param(string $key)
-        {
-            return $this->params[$key] ?? null;
-        }
-
-        public function get_method(): string
-        {
-            return 'POST';
-        }
-
-        public function get_header(string $key): string
-        {
-            return '';
-        }
-    }
-}
+// WP core class shims live in WpCoreShims.php (shared with UnitReal bootstrap).
+require_once __DIR__ . '/WpCoreShims.php';
 
 /* ------------------------------------------------------------------------- */
 /* LBFA helper stubs                                                          */
 /* ------------------------------------------------------------------------- */
 
 if (!class_exists('LBFA_Logger', false)) {
+    /**
+     * No-op logger stub mirroring the surface of classes/class-lbfa-logger.php
+     * (constants + level/category methods). Tests don't care about log output;
+     * the real logger is exercised by tests/UnitReal/LoggerTest.php instead.
+     */
     class LBFA_Logger
     {
-        const CATEGORY_API = 'api';
-        const CATEGORY_GENERAL = 'general';
-        const CATEGORY_AUTH = 'auth';
-        const CATEGORY_CACHE = 'cache';
+        const LEVEL_DEBUG = 'debug';
+        const LEVEL_INFO = 'info';
+        const LEVEL_WARNING = 'warning';
+        const LEVEL_ERROR = 'error';
+        const LEVEL_CRITICAL = 'critical';
 
-        public static function info(string $message = '', string $category = '', string $source = ''): void {}
-        public static function warning(string $message = '', string $category = '', string $source = ''): void {}
-        public static function error(string $message = '', string $category = '', string $source = ''): void {}
-        public static function debug(string $message = '', string $category = '', string $source = ''): void {}
+        const CATEGORY_API = 'api';
+        const CATEGORY_SHORTCODE = 'shortcode';
+        const CATEGORY_AUTH = 'auth';
+        const CATEGORY_DOCUMENT = 'document';
+        const CATEGORY_LANGUAGE = 'language';
+        const CATEGORY_CACHE = 'cache';
+        const CATEGORY_CONFIG = 'config';
+        const CATEGORY_GENERAL = 'general';
+
+        public static function log($message, string $level = self::LEVEL_INFO, string $category = self::CATEGORY_GENERAL, string $context = '', string $subDir = ''): bool { return true; }
+        public static function debug($message, string $category = self::CATEGORY_GENERAL, string $context = '', string $subDir = ''): bool { return true; }
+        public static function info($message, string $category = self::CATEGORY_GENERAL, string $context = '', string $subDir = ''): bool { return true; }
+        public static function warning($message, string $category = self::CATEGORY_GENERAL, string $context = '', string $subDir = ''): bool { return true; }
+        public static function error($message, string $category = self::CATEGORY_GENERAL, string $context = '', string $subDir = ''): bool { return true; }
+        public static function critical($message, string $category = self::CATEGORY_GENERAL, string $context = '', string $subDir = ''): bool { return true; }
+        public static function api($message, string $level = self::LEVEL_INFO, string $context = ''): bool { return true; }
+        public static function shortcode($message, string $level = self::LEVEL_INFO, string $context = ''): bool { return true; }
+        public static function auth($message, string $level = self::LEVEL_INFO, string $context = ''): bool { return true; }
+        public static function document($message, string $level = self::LEVEL_INFO, string $context = ''): bool { return true; }
+        public static function language($message, string $level = self::LEVEL_INFO, string $context = ''): bool { return true; }
+        public static function set_enabled($enabled): void {}
+        public static function is_enabled(): bool { return false; }
+        public static function get_log_files_info(): array { return ['enabled' => false, 'logs_dir' => '', 'retention_days' => 60, 'files' => []]; }
+        public static function clear_all_logs(): bool { return true; }
+        public static function set_retention_days($days): void {}
+        public static function get_retention_days(): int { return 60; }
     }
 }
 

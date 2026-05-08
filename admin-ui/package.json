@@ -11,7 +11,8 @@
     "type-check": "vue-tsc --build --force",
     "lint": "eslint . --fix",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@fontsource/roboto": "5.2.5",
@@ -40,6 +41,7 @@
     "vite-plugin-vue-layouts-next": "^0.0.8",
     "vite-plugin-vuetify": "^2.1.1",
     "vitest": "^2.1.0",
+    "@vitest/coverage-v8": "^2.1.0",
     "@vue/test-utils": "^2.4.6",
     "jsdom": "^25.0.0",
     "vue-router": "^4.5.0",

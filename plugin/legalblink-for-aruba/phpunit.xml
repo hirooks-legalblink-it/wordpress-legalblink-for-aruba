@@ -10,8 +10,13 @@
     cacheResultFile=".phpunit.result.cache"
 >
     <testsuites>
+        <!-- Unit: stub-based tests (LBFA_USE_STUBS=1, default). -->
         <testsuite name="Unit">
             <directory>tests/Unit</directory>
+        </testsuite>
+        <!-- UnitReal: tests against the real helper classes (LBFA_USE_STUBS=0). -->
+        <testsuite name="UnitReal">
+            <directory>tests/UnitReal</directory>
         </testsuite>
     </testsuites>
     <coverage>

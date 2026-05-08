@@ -20,10 +20,16 @@
   "require-dev": {
     "phpunit/phpunit": "^9.6",
     "yoast/phpunit-polyfills": "^2.0",
-    "brain/monkey": "^2.6"
+    "brain/monkey": "^2.6",
+    "mikey179/vfsstream": "^1.6"
   },
   "scripts": {
-    "test": "phpunit",
-    "test:unit": "phpunit --testsuite Unit"
+    "test": [
+      "@test:unit",
+      "@test:unitreal"
+    ],
+    "test:unit": "LBFA_USE_STUBS=1 phpunit --testsuite Unit",
+    "test:unitreal": "LBFA_USE_STUBS=0 phpunit --testsuite UnitReal",
+    "test:coverage": "LBFA_USE_STUBS=1 phpunit --testsuite Unit --coverage-html .coverage-html --coverage-text"
   }
 }

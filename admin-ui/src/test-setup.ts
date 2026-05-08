@@ -17,21 +17,28 @@ declare global {
     }
     LB_I18N?: Record<string, string>
   }
+
+  // eslint-disable-next-line no-var
+  var __resetLbfaGlobals: (overrides?: Partial<Window['lbfa']>, i18n?: Record<string, string>) => void
 }
 
-const installLbfaGlobals = () => {
+const installLbfaGlobals = (
+  overrides: Partial<Window['lbfa']> = {},
+  i18n: Record<string, string> = {},
+) => {
   Object.defineProperty(window, 'lbfa', {
     value: {
       root: 'http://localhost/wp-json/lbfa/v1',
       nonce: 'test-nonce',
       editPagesUrl: 'http://localhost/wp-admin/edit.php?post_type=page',
+      ...overrides,
     },
     writable: true,
     configurable: true,
   })
 
   Object.defineProperty(window, 'LB_I18N', {
-    value: {},
+    value: i18n,
     writable: true,
     configurable: true,
   })
@@ -39,6 +46,10 @@ const installLbfaGlobals = () => {
 
 // Top-level install so service singletons see `window.lbfa` at import time.
 installLbfaGlobals()
+
+// Exposed so tests that need to flip editPagesUrl or LB_I18N can do so without
+// duplicating the install logic.
+;(globalThis as any).__resetLbfaGlobals = installLbfaGlobals
 
 beforeEach(() => {
   installLbfaGlobals()
