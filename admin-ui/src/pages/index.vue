@@ -140,11 +140,11 @@
 
             <v-window-item value="accessibility_widget">
               <AccessibilityWidgetSettingsCard
-                :local-enabled="store.accessibilityWidget?.localEnabled ?? false"
+                :local-enabled="pendingAccessibilityWidgetEnabled"
                 :saving="store.getIsSavingAccessibilityWidgetToggle"
                 :widget="store.accessibilityWidget"
                 @save="saveAccessibilityWidgetSettings"
-                @update:enabled="handleAccessibilityWidgetToggle"
+                @update:enabled="pendingAccessibilityWidgetEnabled = $event"
               />
             </v-window-item>
 
@@ -318,6 +318,15 @@
   const accessibilityDeclarationPage = ref<string | null>(null)
   const accessibilityDeclarationShortcode = '[LBFA_ACCESSIBILITY_DECLARATION]'
 
+  // Pending toggle state for the accessibility widget. Bound to the switch
+  // in AccessibilityWidgetSettingsCard so flipping it does NOT persist
+  // anything until the user clicks "Salva". Kept in sync with the store
+  // whenever the loaded widget payload updates.
+  const pendingAccessibilityWidgetEnabled = ref(false)
+  watchEffect(() => {
+    pendingAccessibilityWidgetEnabled.value = store.accessibilityWidget?.localEnabled ?? false
+  })
+
   const cacheDuration = computed({
     get: () => store.cacheSettings.cache_duration || 30,
     set: value => store.cacheSettings.cache_duration = value,
@@ -339,17 +348,14 @@
     showMessage('Impostazioni dichiarazione di accessibilità salvate!')
   }
 
-  async function handleAccessibilityWidgetToggle (enabled: boolean) {
+  async function saveAccessibilityWidgetSettings () {
     try {
-      await store.saveAccessibilityWidgetToggle(enabled)
+      await store.saveAccessibilityWidgetToggle(pendingAccessibilityWidgetEnabled.value)
+      showMessage('Impostazioni widget di accessibilità salvate!')
     } catch (error) {
-      console.error('Errore salvataggio toggle widget accessibilità:', error)
-      showMessage('Errore nel salvataggio del toggle widget di accessibilità', 'error')
+      console.error('Errore salvataggio widget accessibilità:', error)
+      showMessage('Errore nel salvataggio delle impostazioni widget di accessibilità', 'error')
     }
-  }
-
-  function saveAccessibilityWidgetSettings () {
-    showMessage('Impostazioni widget di accessibilità salvate!')
   }
 
   async function saveCacheSettings () {
