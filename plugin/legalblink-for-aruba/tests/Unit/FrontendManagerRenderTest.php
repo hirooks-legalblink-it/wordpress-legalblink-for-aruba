@@ -68,6 +68,24 @@ class FrontendManagerRenderTest extends TestCase
 
     /* ---------- render_cookie_banner ---------- */
 
+    public function testGetScriptAllowedHtmlIncludesV2CookieBannerDataAttributes(): void
+    {
+        // wp_kses has no wildcard for `data-*`; the v2 cookie banner snippet
+        // (data-license-id / data-blocking-mode / data-consent-mode /
+        // data-tcf-enabled) requires each attribute to be enumerated, or
+        // the CMP loader receives a stripped <script> and never boots.
+        $allowed = LBFA_Frontend_Manager::get_script_allowed_html();
+
+        $this->assertArrayHasKey('script', $allowed);
+        $this->assertArrayHasKey('data-license-id', $allowed['script']);
+        $this->assertArrayHasKey('data-blocking-mode', $allowed['script']);
+        $this->assertArrayHasKey('data-consent-mode', $allowed['script']);
+        $this->assertArrayHasKey('data-tcf-enabled', $allowed['script']);
+        // Base attrs needed for the accessibility widget snippet.
+        $this->assertArrayHasKey('src', $allowed['script']);
+        $this->assertArrayHasKey('defer', $allowed['script']);
+    }
+
     public function testRenderCookieBannerSkipsWhenDisabled(): void
     {
         // cookie_banner_enabled defaults to false → method returns early.

@@ -57,19 +57,43 @@ if ( ! class_exists( 'LBFA_Frontend_Manager' ) ) {
                 }
             }
 
-            $allow_list = [
-                'script' => [
-                    'type' => [],
-                    'src' => [],
-                    'id' => [],
-                    'async' => [],
-                    'defer' => [],
-                ],
-            ];
-
             if (!empty($banner_snippet)) {
-                echo wp_kses($banner_snippet, $allow_list);
+                echo wp_kses($banner_snippet, self::get_script_allowed_html());
             }
+        }
+
+        /**
+         * Whitelist for `<script>` snippets we inject via wp_kses.
+         *
+         * The v2 cookie banner snippet from the backend embeds `data-*`
+         * attributes (license id, blocking mode, consent mode, TCF) that
+         * the CMP loader reads at runtime. wp_kses strips any attribute
+         * not explicitly listed here, so the data-* keys MUST be enumerated
+         * — there is no wildcard for `data-*` in wp_kses.
+         *
+         * Reference: see backend `buildCookieBannerV2Snippet` for the full
+         * attribute set, and `ACCESSIBILITY_WIDGET_SNIPPET` for the widget
+         * snippet (which uses only `src` + `defer`).
+         */
+        public static function get_script_allowed_html()
+        {
+            return array(
+                'script' => array(
+                    'type' => array(),
+                    'src' => array(),
+                    'id' => array(),
+                    'async' => array(),
+                    'defer' => array(),
+                    'crossorigin' => array(),
+                    'integrity' => array(),
+                    'referrerpolicy' => array(),
+                    'nonce' => array(),
+                    'data-license-id' => array(),
+                    'data-blocking-mode' => array(),
+                    'data-consent-mode' => array(),
+                    'data-tcf-enabled' => array(),
+                ),
+            );
         }
 
         /**
@@ -176,17 +200,7 @@ if ( ! class_exists( 'LBFA_Frontend_Manager' ) ) {
                 return;
             }
 
-            $allow_list = array(
-                'script' => array(
-                    'type' => array(),
-                    'src' => array(),
-                    'id' => array(),
-                    'async' => array(),
-                    'defer' => array(),
-                ),
-            );
-
-            echo wp_kses($html, $allow_list);
+            echo wp_kses($html, self::get_script_allowed_html());
         }
 
         /**
