@@ -40,3 +40,22 @@ input[type="text"] {
   opacity: 1 !important;
   background: #ddd !important;
 }
+
+/*
+ * WordPress core admin stylesheet paints a check glyph via
+ * `input[type=checkbox]:checked::before { content: url(...) }`. Vuetify's
+ * v-switch / v-checkbox render an inner <input type="checkbox"> that
+ * inherits the rule, so the WP check icon leaks into our toggles and
+ * looks like a stray glyph in the middle of the switch thumb.
+ *
+ * Wipe `::before` and `::after` on the inputs that live inside any
+ * Vuetify selection control so the WP rule cannot apply.
+ */
+.v-selection-control input[type="checkbox"]::before,
+.v-selection-control input[type="checkbox"]::after,
+.v-selection-control input[type="checkbox"]:checked::before,
+.v-selection-control input[type="checkbox"]:checked::after {
+  content: none !important;
+  background: none !important;
+  display: none !important;
+}
