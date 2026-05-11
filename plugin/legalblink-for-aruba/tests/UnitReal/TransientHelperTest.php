@@ -24,6 +24,8 @@ class TransientHelperTest extends TestCase
      */
     private static array $store = [];
     private static array $options = [];
+    /** @var list<string> */
+    public static array $wpdbQueries = [];
 
     protected function set_up(): void
     {
@@ -32,6 +34,44 @@ class TransientHelperTest extends TestCase
 
         self::$store = [];
         self::$options = [];
+        self::$wpdbQueries = [];
+
+        // Minimal $wpdb stub that records queries and removes matching keys
+        // from the in-memory $store. clearAll() now falls back to direct
+        // wpdb deletion for keys missing from the registry.
+        global $wpdb;
+        $wpdb = new class {
+            public string $options = 'wp_options';
+            public string $sitemeta = 'wp_sitemeta';
+
+            public function prepare(string $sql, ...$args): string
+            {
+                // Substitute %s placeholders with the arg values so the test
+                // can assert against the final query (good enough for these
+                // tests; production wpdb does proper escaping).
+                foreach ($args as $arg) {
+                    $sql = preg_replace('/%s/', is_string($arg) ? $arg : (string) $arg, $sql, 1);
+                }
+                return $sql;
+            }
+
+            public function query(string $sql): int
+            {
+                TransientHelperTest::$wpdbQueries[] = $sql;
+                // Crude pattern detection for the lbfa transient cleanup
+                // query (escaped backslashes from the LIKE pattern make a
+                // plain substring match unreliable, so we look for both
+                // tokens in any escape form).
+                if (str_contains($sql, 'transient') && str_contains($sql, 'lbfa')) {
+                    foreach (array_keys(TransientHelperTest::storeRef()) as $key) {
+                        if (str_starts_with($key, 'lbfa_')) {
+                            TransientHelperTest::unsetStore($key);
+                        }
+                    }
+                }
+                return 1;
+            }
+        };
 
         Functions\when('is_multisite')->justReturn(false);
         Functions\when('is_network_admin')->justReturn(false);
@@ -39,6 +79,7 @@ class TransientHelperTest extends TestCase
         Functions\when('current_user_can')->justReturn(false);
         Functions\when('current_time')->justReturn(1_700_000_000);
         Functions\when('maybe_serialize')->alias(static fn ($v) => is_scalar($v) ? (string) $v : serialize($v));
+        Functions\when('wp_cache_flush_group')->justReturn(true);
 
         Functions\when('get_transient')->alias(static fn ($k) => array_key_exists($k, self::$store) ? self::$store[$k] : false);
         Functions\when('set_transient')->alias(static function ($k, $v, $expiration) {
@@ -69,6 +110,16 @@ class TransientHelperTest extends TestCase
             self::$options[$k] = $v;
             return true;
         });
+    }
+
+    public static function &storeRef(): array
+    {
+        return self::$store;
+    }
+
+    public static function unsetStore(string $key): void
+    {
+        unset(self::$store[$key]);
     }
 
     protected function tear_down(): void
@@ -154,6 +205,24 @@ class TransientHelperTest extends TestCase
         $this->assertArrayNotHasKey('lbfa_b', self::$store);
         $this->assertArrayNotHasKey('lbfa_c', self::$store);
         $this->assertSame([], self::$options['lbfa_transient_registry']);
+    }
+
+    public function testClearAllFallsBackToWpdbForKeysMissingFromRegistry(): void
+    {
+        // Simulate a legacy / out-of-band write: a transient is present in
+        // the store but NOT registered. Pre-fix, clearAll() left this key
+        // alive forever; now the wpdb fallback wipes it.
+        self::$store['lbfa_legacy_orphan'] = 'stale-payload';
+        // Registry intentionally empty.
+        self::$options['lbfa_transient_registry'] = [];
+
+        LBFA_Transient_Helper::clearAll();
+
+        $this->assertArrayNotHasKey('lbfa_legacy_orphan', self::$store);
+        $this->assertNotEmpty(self::$wpdbQueries);
+        // Escaped LIKE pattern contains both tokens — assert tolerantly.
+        $this->assertStringContainsString('transient', self::$wpdbQueries[0]);
+        $this->assertStringContainsString('lbfa', self::$wpdbQueries[0]);
     }
 
     public function testExistsReflectsStorePresence(): void
