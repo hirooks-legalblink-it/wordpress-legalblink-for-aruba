@@ -62,9 +62,12 @@
               id="accessibility-widget-switch"
               color="primary"
               :disabled="!widget?.configured"
+              false-icon=""
               hide-details
+              indeterminate-icon=""
               inset
               :model-value="localEnabled"
+              true-icon=""
               @update:model-value="(value: boolean | null) => emit('update:enabled', !!value)"
             />
           </div>
