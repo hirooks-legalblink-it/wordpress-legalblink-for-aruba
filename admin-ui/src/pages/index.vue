@@ -373,6 +373,10 @@
       const response = await cacheService.clearCache()
       if (response.success) {
         showMessage(response.message || 'Cache eliminata!', 'info')
+        // After clearing the plugin transients, re-run the full bootstrap so
+        // capability + GDPR docs + accessibility declaration/widget reflect
+        // the freshly fetched payloads instead of the stale in-store copy.
+        await store.setAuthenticated(true)
       } else {
         showMessage(response.errors?.[0] || 'Errore nella pulizia della cache', 'error')
       }
