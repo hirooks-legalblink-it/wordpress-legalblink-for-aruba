@@ -116,9 +116,9 @@ Yes, it can be configured for every site.
 - New: Cookie Banner v2 support (Consent Mode V2 / IAB TCF) — automatically used when the active plan advertises it, with transparent fallback to the legacy banner otherwise
 - Improved: cache invalidation also wipes orphan transients via a wpdb fallback (previously some transients survived "Clear cache" until natural expiration)
 = 1.1.1 =
-- Fixed: admin UI calls 404'd on sites configured with "Plain" permalinks because the REST base URL was truncated to "/" — now the absolute REST URL is passed through, so the admin works regardless of the permalink structure
+- Fixed: the plugin admin now works on sites using "Plain" permalinks
 = 1.1.2 =
-- Fixed: admin UI calls with query parameters (e.g. banner, language switching) failed on sites with "Plain" permalinks because the params were appended with `?` over an existing query string, producing a malformed URL — the separator is now `&` whenever a `?` is already present
+- Fixed: language switching and other parameterised actions on "Plain" permalinks
 
 == Upgrade Notice ==
 
