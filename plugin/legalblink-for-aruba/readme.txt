@@ -4,7 +4,7 @@ Tags: gdpr, privacy, cookie, policy, compliance
 Requires at least: 6.0
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.1.0
+Stable tag: 1.1.1
 License: GPLv3 or later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -114,12 +114,9 @@ Yes, it can be configured for every site.
 - New: "Accessibility Declaration" tab to embed the accessibility declaration document in a WordPress page, with iframe / HTML snippet modes consistent with the existing GDPR documents
 - New: "Accessibility Widget" tab with read-only widget status, snippet preview, and local toggle to inject the widget snippet on the public site
 - New: Cookie Banner v2 support (Consent Mode V2 / IAB TCF) — automatically used when the active plan advertises it, with transparent fallback to the legacy banner otherwise
-- New: capability-driven tab visibility — GDPR-only / accessibility-only / hybrid configurations now reflect the active subscription instead of inferring from the GDPR document list
 - Improved: cache invalidation also wipes orphan transients via a wpdb fallback (previously some transients survived "Clear cache" until natural expiration)
-- Improved: the admin UI re-loads capabilities + documents + widget data automatically after "Clear cache", without a manual page refresh
-- Improved: capabilities are now resolved on every admin page load, not only at first login — tabs no longer collapse to "Cache only" after a refresh
-- Fixed: cookie banner v2 `data-*` attributes (license id, blocking mode, consent mode, TCF) are preserved when the snippet is injected on the public site
-- Fixed: the accessibility widget toggle no longer auto-saves on change — the "Save" button persists the change explicitly, consistent with the other settings cards
+= 1.1.1 =
+- Fixed: admin UI calls 404'd on sites configured with "Plain" permalinks because the REST base URL was truncated to "/" — now the absolute REST URL is passed through, so the admin works regardless of the permalink structure
 
 == Upgrade Notice ==
 
