@@ -4,7 +4,7 @@ Tags: gdpr, privacy, cookie, policy, compliance
 Requires at least: 6.0
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.1.1
+Stable tag: 1.1.2
 License: GPLv3 or later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -117,6 +117,8 @@ Yes, it can be configured for every site.
 - Improved: cache invalidation also wipes orphan transients via a wpdb fallback (previously some transients survived "Clear cache" until natural expiration)
 = 1.1.1 =
 - Fixed: admin UI calls 404'd on sites configured with "Plain" permalinks because the REST base URL was truncated to "/" — now the absolute REST URL is passed through, so the admin works regardless of the permalink structure
+= 1.1.2 =
+- Fixed: admin UI calls with query parameters (e.g. banner, language switching) failed on sites with "Plain" permalinks because the params were appended with `?` over an existing query string, producing a malformed URL — the separator is now `&` whenever a `?` is already present
 
 == Upgrade Notice ==
 

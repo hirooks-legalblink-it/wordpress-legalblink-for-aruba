@@ -69,11 +69,21 @@ export class BaseApiService {
     data?: any,
     params?: Record<string, string>,
   ): Promise<ApiResponse<T>> {
-    // Build URL with query parameters
+    // Build URL with query parameters.
+    //
+    // On WP installs with "Plain" permalinks `config.root` already contains
+    // a query string (e.g. `https://site.com/?rest_route=/lbfa/v1`). Joining
+    // the endpoint with `/` keeps the REST route inside that query value
+    // (`?rest_route=/lbfa/v1/banner`), but the extra params must be appended
+    // with `&` — using `?` here would produce two `?` in the URL and PHP
+    // would parse `language=it` as part of the `rest_route` value, leading
+    // to 404s. Detect whether a query string is already present and pick
+    // the right separator.
     let url = `${this.config.root}/${endpoint.replace(/^\//, '')}`
     if (params) {
       const searchParams = new URLSearchParams(params)
-      url += `?${searchParams.toString()}`
+      const separator = url.includes('?') ? '&' : '?'
+      url += `${separator}${searchParams.toString()}`
     }
 
     // Prepare request options

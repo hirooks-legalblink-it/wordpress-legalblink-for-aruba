@@ -21,6 +21,23 @@ describe('BaseApiService', () => {
     headers: { 'Content-Type': 'application/json' },
   })
 
+  it('appends query params with `&` when root already contains a `?` (Plain permalinks)', async () => {
+    // Simulate the WP "Plain" permalinks `rest_url()` shape.
+    ;(globalThis as any).__resetLbfaGlobals({ root: 'https://site.com/?rest_route=/lbfa/v1' })
+
+    vi.spyOn(global, 'fetch').mockResolvedValueOnce(okResponse({ success: true }))
+
+    await new TestApi().publicGet('banner', { language: 'it' })
+
+    const fetchMock = global.fetch as unknown as ReturnType<typeof vi.fn>
+    const [url] = fetchMock.mock.calls[0] as [string, RequestInit]
+
+    // Exactly one `?` in the final URL — the second one must become `&`.
+    expect(url.split('?')).toHaveLength(2)
+    expect(url).toContain('rest_route=/lbfa/v1/banner')
+    expect(url).toContain('&language=it')
+  })
+
   it('get builds the URL with the WP root + querystring + nonce header', async () => {
     vi.spyOn(global, 'fetch').mockResolvedValueOnce(okResponse({ success: true, data: 'x' }))
 
