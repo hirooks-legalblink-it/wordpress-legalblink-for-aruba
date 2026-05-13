@@ -175,6 +175,48 @@ class BaseShortcodeTest extends TestCase
         $this->assertSame($content, LBFA_Transient_Helper::$__cache['documents_cookie_policy_html_content_it']);
     }
 
+    public function testGetHtmlContentStripsEmptyAndBrOnlyParagraphs(): void
+    {
+        LBFA_Option_Helper::$__options = [
+            'documents_cookie_policy_html_url_it' => 'https://x/cp.html',
+            'cache_duration' => 1,
+        ];
+
+        $upstream = '<p>First</p>'
+            . '<p></p>'
+            . '<p>   </p>'
+            . '<p>&nbsp;</p>'
+            . '<p>&#160;</p>'
+            . '<p><br></p>'
+            . '<p><br/></p>'
+            . '<p><br /></p>'
+            . '<p>  <br>  </p>'
+            . '<p class="x"></p>'
+            . '<p>Last</p>'
+            . '<p>Keep <br> me</p>';
+
+        Functions\expect('wp_remote_get')
+            ->once()
+            ->andReturn(['response' => ['code' => 200], 'body' => $upstream]);
+
+        $content = (new BaseShortcodeHarness())->publicGetHtmlContent('cookie_policy', 'it');
+
+        // Empty / whitespace / br-only paragraphs are gone.
+        $this->assertStringNotContainsString('<p></p>', $content);
+        $this->assertStringNotContainsString('<p>&nbsp;</p>', $content);
+        $this->assertStringNotContainsString('<p>&#160;</p>', $content);
+        $this->assertStringNotContainsString('<p><br></p>', $content);
+        $this->assertStringNotContainsString('<p><br/></p>', $content);
+        $this->assertStringNotContainsString('<p><br /></p>', $content);
+        $this->assertStringNotContainsString('<p class="x"></p>', $content);
+        // Meaningful paragraphs survive — including those with a <br> mixed
+        // with real text content.
+        $this->assertStringContainsString('First', $content);
+        $this->assertStringContainsString('Last', $content);
+        $this->assertStringContainsString('Keep', $content);
+        $this->assertStringContainsString('me', $content);
+    }
+
     public function testGetHtmlContentStripsScriptBlocksToAvoidJavascriptLeakingAsText(): void
     {
         // Upstream HTML may include third-party scripts (e.g. Cloudflare

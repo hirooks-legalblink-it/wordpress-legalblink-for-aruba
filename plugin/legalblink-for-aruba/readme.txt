@@ -4,7 +4,7 @@ Tags: gdpr, privacy, cookie, policy, compliance
 Requires at least: 6.0
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.1.3
+Stable tag: 1.1.4
 License: GPLv3 or later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -121,6 +121,8 @@ Yes, it can be configured for every site.
 - Fixed: language switching and other parameterized actions on "Plain" permalinks
 = 1.1.3 =
 - Fixed: stray JavaScript snippets no longer appear as text when embedding a document in HTML mode
+= 1.1.4 =
+- Improved: empty paragraphs and paragraphs containing only line breaks are removed from documents embedded in HTML mode, for a cleaner layout
 
 == Upgrade Notice ==
 

@@ -184,6 +184,18 @@ if ( ! class_exists( 'LBFA_Base_Shortcode' ) ) {
             // Also drop self-closing / placeholder script tags with src
             // attribute and no inner content (e.g. `<script src="..."></script>`).
             $content = preg_replace('/<script\b[^>]*\/>/si', '', $content);
+
+            // Drop empty / whitespace-only paragraphs (`<p></p>`, `<p> </p>`,
+            // `<p>&nbsp;</p>`) and paragraphs that only contain line breaks
+            // (`<p><br></p>`, `<p><br /></p>`, possibly mixed with whitespace).
+            // These show up when the upstream WYSIWYG author leaves blank
+            // lines between sections and ruin the vertical rhythm once
+            // embedded inline.
+            $content = preg_replace(
+                '/<p\b[^>]*>(?:\s|&nbsp;|&#160;|<br\s*\/?>)*<\/p>/i',
+                '',
+                $content
+            );
             $sanitized = wp_kses($content, wp_kses_allowed_html('post'));
 
             if (!empty($sanitized)) {
