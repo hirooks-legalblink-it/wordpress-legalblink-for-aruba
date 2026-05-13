@@ -175,6 +175,35 @@ class BaseShortcodeTest extends TestCase
         $this->assertSame($content, LBFA_Transient_Helper::$__cache['documents_cookie_policy_html_content_it']);
     }
 
+    public function testGetHtmlContentStripsScriptBlocksToAvoidJavascriptLeakingAsText(): void
+    {
+        // Upstream HTML may include third-party scripts (e.g. Cloudflare
+        // challenge loader). wp_kses would strip the <script> tag but leave
+        // the inner JS as plain text in the page. Strip the whole block
+        // (tag + content) to avoid the leak.
+        LBFA_Option_Helper::$__options = [
+            'documents_privacy_policy_html_url_it' => 'https://x/pp.html',
+            'cache_duration' => 1,
+        ];
+
+        $upstream = '<p>Privacy</p>'
+            . '<script>window.__CF$cv$params={r:\'abc\'};var a=document.createElement("script");a.src="/cdn-cgi/...";</script>'
+            . '<script src="/foo.js"></script>'
+            . '<p>After</p>';
+
+        Functions\expect('wp_remote_get')
+            ->once()
+            ->andReturn(['response' => ['code' => 200], 'body' => $upstream]);
+
+        $content = (new BaseShortcodeHarness())->publicGetHtmlContent('privacy_policy', 'it');
+
+        $this->assertStringNotContainsString('<script', $content);
+        $this->assertStringNotContainsString('CF$cv$params', $content);
+        $this->assertStringNotContainsString('cdn-cgi', $content);
+        $this->assertStringContainsString('<p>Privacy</p>', $content);
+        $this->assertStringContainsString('<p>After</p>', $content);
+    }
+
     public function testGetHtmlContentReturnsNullWhenUrlMissing(): void
     {
         Functions\expect('wp_remote_get')->never();
