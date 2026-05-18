@@ -6,9 +6,10 @@
 
     <v-card-text>
       <v-alert
+        border="start"
         class="mb-4"
         type="info"
-        variant="tonal"
+        variant="outlined"
       >
         Per aggiornare i testi delle policy puoi cancellare la cache
       </v-alert>
