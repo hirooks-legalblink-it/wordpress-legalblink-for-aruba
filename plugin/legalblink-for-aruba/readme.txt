@@ -124,7 +124,7 @@ Yes, it can be configured for every site.
 = 1.1.4 =
 - Improved: empty paragraphs and paragraphs containing only line breaks are removed from documents embedded in HTML mode, for a cleaner layout
 = 1.1.5 =
-- Improved: accessibility widget status alerts now use a higher-contrast style, meeting WCAG AA requirements
+- Minor fixes
 
 == Upgrade Notice ==
 
