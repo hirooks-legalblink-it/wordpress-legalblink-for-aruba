@@ -7,18 +7,20 @@
     <v-card-text>
       <v-alert
         v-if="!widget?.available"
+        border="start"
         class="mb-4"
         type="info"
-        variant="tonal"
+        variant="outlined"
       >
         Il widget di accessibilità non è disponibile per questo account.
       </v-alert>
 
       <v-alert
         v-else-if="widget.warnings.length > 0"
+        border="start"
         class="mb-4"
         type="warning"
-        variant="tonal"
+        variant="outlined"
       >
         <strong>{{ warningTitle }}</strong>
         <div class="text-body-2 mt-1">{{ warningMessage }}</div>
@@ -26,9 +28,10 @@
 
       <v-alert
         v-else-if="widget.configured"
+        border="start"
         class="mb-4"
         type="success"
-        variant="tonal"
+        variant="outlined"
       >
         Widget configurato per il dominio <strong>{{ widget.domain || '—' }}</strong>.
       </v-alert>

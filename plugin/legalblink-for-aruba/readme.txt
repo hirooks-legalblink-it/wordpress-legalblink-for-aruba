@@ -4,7 +4,7 @@ Tags: gdpr, privacy, cookie, policy, compliance
 Requires at least: 6.0
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.1.4
+Stable tag: 1.1.5
 License: GPLv3 or later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -123,6 +123,8 @@ Yes, it can be configured for every site.
 - Fixed: stray JavaScript snippets no longer appear as text when embedding a document in HTML mode
 = 1.1.4 =
 - Improved: empty paragraphs and paragraphs containing only line breaks are removed from documents embedded in HTML mode, for a cleaner layout
+= 1.1.5 =
+- Improved: accessibility widget status alerts now use a higher-contrast style, meeting WCAG AA requirements
 
 == Upgrade Notice ==
 
