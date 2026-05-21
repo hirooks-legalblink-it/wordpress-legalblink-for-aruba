@@ -26,16 +26,6 @@
         <div class="text-body-2 mt-1">{{ warningMessage }}</div>
       </v-alert>
 
-      <v-alert
-        v-else-if="widget.configured"
-        border="start"
-        class="mb-4"
-        type="success"
-        variant="outlined"
-      >
-        Widget configurato per il dominio <strong>{{ widget.domain || '—' }}</strong>.
-      </v-alert>
-
       <v-row align="center" class="mb-4">
         <v-col cols="12" md="6">
           <div class="d-flex align-center">
