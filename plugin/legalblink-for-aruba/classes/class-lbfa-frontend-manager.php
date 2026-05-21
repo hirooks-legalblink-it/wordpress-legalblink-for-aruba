@@ -7,6 +7,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 if ( ! class_exists( 'LBFA_Frontend_Manager' ) ) {
     final class LBFA_Frontend_Manager
     {
+        // Frontend-only cache key for the accessibility widget snippet. Kept
+        // separate from the admin controller's full-payload cache so the public
+        // render path can store just the renderable html string (or empty when
+        // the backend reports the widget as not deliverable) — matching the
+        // cookie banner pattern where the toggle is checked live against the
+        // option and the cache only holds the snippet itself.
+        const ACCESSIBILITY_WIDGET_HTML_CACHE_KEY = 'accessibility_widget_html';
+
         private static $instance;
 
         /**
@@ -162,13 +170,13 @@ if ( ! class_exists( 'LBFA_Frontend_Manager' ) ) {
         /**
          * Render the accessibility widget snippet on the public site.
          *
-         * S#7701 Phase 4: read-only injection — the snippet itself comes from
-         * the backend (`/accessibility/widget`) and is cached separately from
-         * the cookie banner. The plugin only decides whether to inject it,
-         * driven by the local toggle option `accessibility_widget_enabled`.
-         * No injection happens when the backend reports warnings (missing
-         * configuration, domain mismatch, expired) or when the snippet HTML
-         * is empty.
+         * Aligned with the cookie banner pattern: the toggle option is checked
+         * live (`should_show_accessibility_widget`) and the cache holds only
+         * the renderable html string. When the backend reports the widget as
+         * not deliverable (not configured / warnings / empty html), the cache
+         * stores an empty string and the render bails — short TTL means the
+         * next reconfigure on the LegalBlink side propagates without needing
+         * a manual cache clear or a logout/login round-trip.
          */
         public function render_accessibility_widget()
         {
@@ -176,31 +184,44 @@ if ( ! class_exists( 'LBFA_Frontend_Manager' ) ) {
                 return;
             }
 
-            $cache_duration = LBFA_Option_Helper::getOption('cache_duration', 30);
-            $cache_duration_seconds = max(60, $cache_duration * 3600 * 24);
-
-            $payload = LBFA_Transient_Helper::get('accessibility_widget_snippet');
-            if ($payload === false) {
-                $payload = $this->fetch_accessibility_widget_payload();
-                if (is_array($payload)) {
-                    LBFA_Transient_Helper::set('accessibility_widget_snippet', $payload, $cache_duration_seconds);
-                }
+            $html = LBFA_Transient_Helper::get(self::ACCESSIBILITY_WIDGET_HTML_CACHE_KEY);
+            if ($html === false) {
+                $html = $this->resolve_accessibility_widget_html();
+                // Cache the resolved html (possibly empty). Caching the empty
+                // case is intentional: it avoids hammering the backend from
+                // every public page render while the widget is still being
+                // configured. TTL is the api cache time (~1h), not the
+                // document `cache_duration` (~30d) which is meant for the
+                // policy text, not for backend-state polling.
+                $ttl = max(60, LBFA_Base_API_Controller::get_api_cache_time());
+                LBFA_Transient_Helper::set(self::ACCESSIBILITY_WIDGET_HTML_CACHE_KEY, $html, $ttl);
             }
 
-            if (!is_array($payload) || empty($payload['available']) || empty($payload['configured'])) {
-                return;
-            }
-
-            if (!empty($payload['warnings'])) {
-                return;
-            }
-
-            $html = isset($payload['html']) ? (string) $payload['html'] : '';
-            if ($html === '') {
+            if (!is_string($html) || $html === '') {
                 return;
             }
 
             echo wp_kses($html, self::get_script_allowed_html());
+        }
+
+        /**
+         * Fetch the backend widget payload and reduce it to a renderable html
+         * string. Returns '' when the widget is not deliverable (backend
+         * reports unavailable / not configured / has warnings / empty html).
+         */
+        private function resolve_accessibility_widget_html(): string
+        {
+            $payload = $this->fetch_accessibility_widget_payload();
+            if (!is_array($payload)) {
+                return '';
+            }
+            if (empty($payload['available']) || empty($payload['configured'])) {
+                return '';
+            }
+            if (!empty($payload['warnings'])) {
+                return '';
+            }
+            return isset($payload['html']) ? (string) $payload['html'] : '';
         }
 
         /**

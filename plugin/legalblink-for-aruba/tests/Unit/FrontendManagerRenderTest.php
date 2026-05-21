@@ -212,13 +212,7 @@ class FrontendManagerRenderTest extends TestCase
             'jwt_token' => 'jwt',
             'cache_duration' => 1,
         ];
-        LBFA_Transient_Helper::$__cache['accessibility_widget_snippet'] = [
-            'available' => true,
-            'configured' => true,
-            'domain' => 'example.com',
-            'html' => '<script>aw</script>',
-            'warnings' => [],
-        ];
+        LBFA_Transient_Helper::$__cache['accessibility_widget_html'] = '<script>aw</script>';
 
         Functions\expect('wp_remote_get')->never();
 
@@ -226,32 +220,61 @@ class FrontendManagerRenderTest extends TestCase
         $this->assertSame('<script>aw</script>', $output);
     }
 
-    public function testRenderAccessibilityWidgetSkipsWhenWarningsPresent(): void
+    public function testRenderAccessibilityWidgetSkipsWhenCachedHtmlEmpty(): void
     {
+        // Empty-string cache hit is the deliberate "backend says no widget
+        // today" signal — render bails without re-hitting the API.
         LBFA_Option_Helper::$__options = ['accessibility_widget_enabled' => true, 'jwt_token' => 'jwt'];
-        LBFA_Transient_Helper::$__cache['accessibility_widget_snippet'] = [
-            'available' => true,
-            'configured' => true,
-            'domain' => 'x',
-            'html' => '<script></script>',
-            'warnings' => ['domain_mismatch'],
-        ];
+        LBFA_Transient_Helper::$__cache['accessibility_widget_html'] = '';
+
+        Functions\expect('wp_remote_get')->never();
 
         $this->assertSame('', $this->captureRender(fn () => $this->makeManager()->render_accessibility_widget()));
     }
 
-    public function testRenderAccessibilityWidgetSkipsWhenHtmlEmpty(): void
+    public function testRenderAccessibilityWidgetCacheMissWithWarningsCachesEmpty(): void
     {
+        // Cache miss → backend returns warnings → resolve to empty string,
+        // cache the empty string, render bails.
         LBFA_Option_Helper::$__options = ['accessibility_widget_enabled' => true, 'jwt_token' => 'jwt'];
-        LBFA_Transient_Helper::$__cache['accessibility_widget_snippet'] = [
-            'available' => true,
-            'configured' => true,
-            'domain' => 'x',
-            'html' => '',
-            'warnings' => [],
-        ];
+
+        Functions\expect('wp_remote_get')
+            ->once()
+            ->andReturn([
+                'response' => ['code' => 200],
+                'body' => json_encode([
+                    'available' => true,
+                    'configured' => true,
+                    'domain' => 'x',
+                    'html' => '<script></script>',
+                    'warnings' => ['domain_mismatch'],
+                ]),
+            ]);
 
         $this->assertSame('', $this->captureRender(fn () => $this->makeManager()->render_accessibility_widget()));
+        $this->assertArrayHasKey('accessibility_widget_html', LBFA_Transient_Helper::$__cache);
+        $this->assertSame('', LBFA_Transient_Helper::$__cache['accessibility_widget_html']);
+    }
+
+    public function testRenderAccessibilityWidgetCacheMissWithEmptyHtmlCachesEmpty(): void
+    {
+        LBFA_Option_Helper::$__options = ['accessibility_widget_enabled' => true, 'jwt_token' => 'jwt'];
+
+        Functions\expect('wp_remote_get')
+            ->once()
+            ->andReturn([
+                'response' => ['code' => 200],
+                'body' => json_encode([
+                    'available' => true,
+                    'configured' => true,
+                    'domain' => 'x',
+                    'html' => '',
+                    'warnings' => [],
+                ]),
+            ]);
+
+        $this->assertSame('', $this->captureRender(fn () => $this->makeManager()->render_accessibility_widget()));
+        $this->assertSame('', LBFA_Transient_Helper::$__cache['accessibility_widget_html']);
     }
 
     public function testRenderAccessibilityWidgetCacheMissFetchesAndPersists(): void
@@ -282,7 +305,7 @@ class FrontendManagerRenderTest extends TestCase
         $output = $this->captureRender(fn () => $this->makeManager()->render_accessibility_widget());
 
         $this->assertSame('<script>fetch</script>', $output);
-        $this->assertArrayHasKey('accessibility_widget_snippet', LBFA_Transient_Helper::$__cache);
+        $this->assertSame('<script>fetch</script>', LBFA_Transient_Helper::$__cache['accessibility_widget_html']);
     }
 
     /* ---------- fetch_accessibility_widget_payload ---------- */

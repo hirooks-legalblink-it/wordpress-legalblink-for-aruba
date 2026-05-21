@@ -174,6 +174,24 @@ class AccessibilityWidgetTest extends TestCase
         $this->assertFalse(LBFA_Option_Helper::getOption('accessibility_widget_enabled'));
     }
 
+    public function testSetWidgetLocalToggleDoesNotTouchCache(): void
+    {
+        // The admin's full-payload cache (used to render the admin status
+        // card) is decoupled from the frontend html cache. The toggle save
+        // must NOT clear either — flipping the option is a render-time gate,
+        // not a backend-state change.
+        LBFA_Transient_Helper::$__cache['accessibility_widget_snippet'] = $this->normalizedFixture();
+
+        $request = new WP_REST_Request(['enabled' => true]);
+        (new LBFA_Accessibility_API_Controller())->set_widget_local_toggle($request);
+
+        $this->assertArrayHasKey(
+            'accessibility_widget_snippet',
+            LBFA_Transient_Helper::$__cache,
+            'admin widget cache must survive a toggle save'
+        );
+    }
+
     private function normalizedFixture(): array
     {
         return [
