@@ -37,6 +37,10 @@
                 Consente di inserire il contenuto dell'informativa sulle Condizioni Generali di Vendita direttamente nella pagina utilizzando il codice HTML, senza caricarlo come iframe tramite un link. <br>
                 In questo modo il testo sarà parte integrante della pagina, potrà essere indicizzato dai motori di ricerca e si integrerà con lo stile grafico del sito.
               </template>
+              <template v-else-if="policyType === 'accessibility_declaration'" #default>
+                Consente di inserire il contenuto della dichiarazione di accessibilità direttamente nella pagina utilizzando il codice HTML, senza caricarlo come iframe tramite un link. <br>
+                In questo modo il testo sarà parte integrante della pagina, potrà essere indicizzato dai motori di ricerca e si integrerà con lo stile grafico del sito.
+              </template>
             </v-tooltip>
           </div>
         </v-col>
@@ -60,6 +64,7 @@
             <label v-if="policyType === 'privacy_policy'" class="font-weight-bold" for="policy-page-select">Pagina della privacy policy</label>
             <label v-else-if="policyType === 'cookie_policy'" class="font-weight-bold" for="policy-page-select">Pagina della cookie policy</label>
             <label v-else-if="policyType === 'terms_of_service'" class="font-weight-bold" for="policy-page-select">Pagina delle Condizioni Generali di Vendita</label>
+            <label v-else-if="policyType === 'accessibility_declaration'" class="font-weight-bold" for="policy-page-select">Pagina della dichiarazione di accessibilità</label>
             <v-tooltip contained max-width="400">
               <template #activator="{ props: tooltipProps }">
                 <v-icon
@@ -80,6 +85,10 @@
               </template>
               <template v-else-if="policyType === 'terms_of_service'" #default>
                 È la pagina in cui viene mostrato il contenuto dell'informativa Condizioni Generali di Vendita. <br>
+                Il testo viene inserito direttamente nella pagina selezionata.
+              </template>
+              <template v-else-if="policyType === 'accessibility_declaration'" #default>
+                È la pagina in cui viene mostrato il contenuto della dichiarazione di accessibilità. <br>
                 Il testo viene inserito direttamente nella pagina selezionata.
               </template>
             </v-tooltip>
@@ -105,7 +114,7 @@
           <div class="text-caption">
             <v-divider class="mt-1" />
             <template v-if="policyPage">
-              <a class="text-primary text-decoration-none" :href="editPagesUrl" target="_blank" rel="noopener noreferrer">
+              <a class="text-primary text-decoration-none" :href="editPagesUrl" rel="noopener noreferrer" target="_blank">
                 Verifica le pagine CMS del tuo sito
               </a><br>
               <span class="text-error">
@@ -140,6 +149,10 @@
               </template>
               <template v-else-if="policyType === 'terms_of_service'" #default>
                 È il link al documento dell'informativa sulle Condizioni Generali di Vendita generato da LegalBlink per Aruba. <br>
+                Il sistema utilizzerà automaticamente questo documento per mostrarne i contenuti nella pagina scelta.
+              </template>
+              <template v-else-if="policyType === 'accessibility_declaration'" #default>
+                È il link al documento della dichiarazione di accessibilità generato da LegalBlink per Aruba. <br>
                 Il sistema utilizzerà automaticamente questo documento per mostrarne i contenuti nella pagina scelta.
               </template>
             </v-tooltip>
@@ -200,6 +213,9 @@
               </template>
               <template v-else-if="policyType === 'terms_of_service'" #default>
                 Copiando e incollando questo codice in qualsiasi punto del tuo sito che supporti gli shortcode è possibile inserire il testo dell'informativa sulle Condizioni Generali di Vendita all'interno di una pagina o articolo.
+              </template>
+              <template v-else-if="policyType === 'accessibility_declaration'" #default>
+                Copiando e incollando questo codice in qualsiasi punto del tuo sito che supporti gli shortcode è possibile inserire il testo della dichiarazione di accessibilità all'interno di una pagina o articolo.
               </template>
             </v-tooltip>
           </div>
@@ -298,7 +314,11 @@
   const hasPageSelected = computed(() => props.policyPage !== null && props.policyPage !== '')
   const isPageSelectionValid = computed(() => !isPageRequired.value || hasPageSelected.value)
   const isSaveDisabled = computed(() => !isPageSelectionValid.value)
-  const isUpdating = computed(() => store.getIsUpdatingPage)
+  const isUpdating = computed(() =>
+    props.policyType === 'accessibility_declaration'
+      ? store.isUpdatingAccessibilityDeclarationPage
+      : store.getIsUpdatingPage,
+  )
 
   // Messaggio di errore per la selezione della pagina
   const pageSelectionError = computed(() => {
@@ -321,12 +341,23 @@
 
   async function handleSave () {
     try {
-      const result = await store.updatePageContent({
-        policy_type: props.policyType,
-        page_id: props.policyPage ? Number.parseInt(props.policyPage, 10) : 0,
-        use_html_snippet: props.useHtmlSnippet,
-        language: store.getSelectedLanguage,
-      })
+      const pageId = props.policyPage ? Number.parseInt(props.policyPage, 10) : 0
+      const language = store.getSelectedLanguage
+
+      // Accessibility declaration uses a dedicated endpoint that never touches
+      // GDPR options (S#7701 mixed-mode separation).
+      const result = props.policyType === 'accessibility_declaration'
+        ? await store.updateAccessibilityDeclarationPage({
+            page_id: pageId,
+            use_html_snippet: props.useHtmlSnippet,
+            language,
+          })
+        : await store.updatePageContent({
+            policy_type: props.policyType,
+            page_id: pageId,
+            use_html_snippet: props.useHtmlSnippet,
+            language,
+          })
 
       emit('page-updated', result)
       emit('save')

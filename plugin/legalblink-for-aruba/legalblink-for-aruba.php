@@ -3,7 +3,7 @@
  * Plugin Name: LegalBlink for Aruba
  * Plugin URI: https://wordpress.org/plugins/legalblink-for-aruba/
  * Description: Integrate LegalBlink services from Aruba in your WordPress site. Generate GDPR-compliant legal documents including Privacy Policy, Cookie Policy, and Terms & Conditions with professional legal support.
- * Version: 1.0.2
+ * Version: 1.1.6
  * Author: LegalBlink
  * Author URI: https://legalblink.it/
  * Text Domain: legalblink-for-aruba
@@ -39,7 +39,7 @@ if (!defined('LBFA_PLUGIN_DIR')) {
     define('LBFA_PLUGIN_DIR', plugin_dir_path(__FILE__));
 }
 if (!defined('LBFA_PLUGIN_VERSION')) {
-    define('LBFA_PLUGIN_VERSION', '1.0.2');
+    define('LBFA_PLUGIN_VERSION', '1.1.6');
 }
 
 require_once __DIR__ . '/vendor/autoload.php';
@@ -91,12 +91,17 @@ function lbfa_enqueue_admin_assets()
         return;
     }
 
+    // Pass the absolute REST URL so the admin SPA still works on sites with
+    // "Plain" permalinks. On those installs `rest_url('lbfa/v1')` returns
+    // `https://example.com/?rest_route=/lbfa/v1` and `PHP_URL_PATH` drops
+    // the query string entirely, collapsing `root` to `/` — every admin
+    // call then resolves against the site origin (e.g. `/cache/settings`)
+    // and 404s. Same-origin so no CORS implication.
     $full_url = rest_url(LBFA_Base_API_Controller::get_api_namespace());
-    $relative_url = wp_parse_url( $full_url, PHP_URL_PATH );
 
     $api_config = [
         'baseUrl' => '',
-        'root' => esc_url_raw( $relative_url ),
+        'root' => esc_url_raw( $full_url ),
         'nonce' => wp_create_nonce('wp_rest'),
         'editPagesUrl' => admin_url('edit.php?post_type=page'),
     ];

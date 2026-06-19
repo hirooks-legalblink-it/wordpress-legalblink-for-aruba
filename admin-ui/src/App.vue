@@ -78,20 +78,21 @@
       // Prima verifica l'autenticazione
       await store.checkAuthStatus()
 
-      // Se l'utente è autenticato, carica tutti i dati in parallelo, altrimenti solo branding e lingue
-      await Promise.all(isAuthenticated.value
-        ? [
-          store.loadBranding(),
-          store.loadLanguages(),
-          store.loadDocuments(),
-          store.loadCacheSettings(),
-          store.loadCookieBannerData(),
-          store.loadWordPressPages(),
-        ]
-        : [
+      if (isAuthenticated.value) {
+        // S#7701 capability-driven bootstrap: setAuthenticated(true) loads
+        // capabilities first and only then triggers the feature-specific
+        // loaders (GDPR docs/banner only if features.gdpr is true,
+        // accessibility declaration/widget only if their flags are true).
+        // Calling the individual loaders here would skip loadCapabilities
+        // and leave every tab hidden except `cache` after a refresh.
+        await store.setAuthenticated(true)
+      } else {
+        // Unauthenticated: only the welcome page needs branding + languages.
+        await Promise.all([
           store.loadBranding(),
           store.loadLanguages(),
         ])
+      }
 
       // Dopo aver caricato tutto, naviga alla pagina appropriata
       const currentPath = route.path

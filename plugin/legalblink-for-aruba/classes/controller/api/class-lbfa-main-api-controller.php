@@ -18,6 +18,8 @@ if (!class_exists('LBFA_Main_API_Controller')) {
         private $auth_controller;
         private $external_controller;
         private $document_controller;
+        private $capability_controller;
+        private $accessibility_controller;
 
         private static $instance;
 
@@ -42,6 +44,8 @@ if (!class_exists('LBFA_Main_API_Controller')) {
             $this->auth_controller = new LBFA_Auth_API_Controller();
             $this->external_controller = new LBFA_External_API_Controller();
             $this->document_controller = new LBFA_Document_API_Controller();
+            $this->capability_controller = new LBFA_Capability_API_Controller();
+            $this->accessibility_controller = new LBFA_Accessibility_API_Controller();
 
             // Register main API routes
             add_action('rest_api_init', array($this, 'register_routes'));
@@ -57,6 +61,8 @@ if (!class_exists('LBFA_Main_API_Controller')) {
             $this->auth_controller->register_routes();
             $this->external_controller->register_routes();
             $this->document_controller->register_routes();
+            $this->capability_controller->register_routes();
+            $this->accessibility_controller->register_routes();
         }
 
         /**
@@ -165,7 +171,15 @@ if (!class_exists('LBFA_Main_API_Controller')) {
                 );
             }
 
-            $url = self::get_api_base_url() . '/cookie-solution/embed?language=it';
+            // S#7701 Phase 5: prefer the v2 embed endpoint when the capability
+            // is enabled (cached via LBFA_Capability_API_Controller). Falls
+            // back to the legacy embed silently on capability miss so existing
+            // installs keep working without admin interaction.
+            $use_v2 = class_exists('LBFA_Capability_API_Controller')
+                && LBFA_Capability_API_Controller::is_feature_enabled('cookieBannerV2');
+            $endpoint = $use_v2 ? '/cookie-solution/embed-v2' : '/cookie-solution/embed?language=it';
+
+            $url = self::get_api_base_url() . $endpoint;
             $response = wp_remote_get($url, array(
                 'headers' => array(
                     'Content-Type' => 'application/json',
@@ -184,7 +198,7 @@ if (!class_exists('LBFA_Main_API_Controller')) {
             $body = wp_remote_retrieve_body($response);
             $banner_data = json_decode($body, true);
 
-            LBFA_Logger::debug('Banner fetch response: ' . wp_json_encode($banner_data), LBFA_Logger::CATEGORY_GENERAL, 'fetch_banner_snippet');
+            LBFA_Logger::debug('Banner fetch response (v2=' . ($use_v2 ? '1' : '0') . '): ' . wp_json_encode($banner_data), LBFA_Logger::CATEGORY_GENERAL, 'fetch_banner_snippet');
 
             if ($code !== 200 || !isset($banner_data['html'])) {
                 // Log failed verification
@@ -198,7 +212,7 @@ if (!class_exists('LBFA_Main_API_Controller')) {
             }
 
             // Log successful verification
-            LBFA_Logger::info('Banner snippet fetched successfully', LBFA_Logger::CATEGORY_GENERAL, 'fetch_banner_snippet');
+            LBFA_Logger::info('Banner snippet fetched successfully (v2=' . ($use_v2 ? '1' : '0') . ')', LBFA_Logger::CATEGORY_GENERAL, 'fetch_banner_snippet');
 
             return $banner_data['html'];
         }

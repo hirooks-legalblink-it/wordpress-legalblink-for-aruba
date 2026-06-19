@@ -1,3 +1,6 @@
 vendor/
 composer.lock
 config.php
+.phpunit.result.cache
+.coverage-html/
+coverage/

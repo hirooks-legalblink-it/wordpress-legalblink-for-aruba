@@ -131,6 +131,11 @@ rsync -av \
     --exclude='logs/*.log' \
     --exclude='*.zip' \
     --exclude='*.example.php' \
+    --exclude='tests' \
+    --exclude='phpunit.xml' \
+    --exclude='.phpunit.result.cache' \
+    --exclude='.coverage-html' \
+    --exclude='coverage' \
     ./ "${TEMP_BUILD_DIR}/${PLUGIN_NAME}/"
 
 # Ensure logs directory exists but is empty (keep index.php)

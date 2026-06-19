@@ -57,6 +57,15 @@
           {{ serviceStatusError }}
         </v-alert>
 
+        <v-alert
+          v-else-if="capabilitiesError"
+          class="ma-4"
+          type="error"
+          variant="tonal"
+        >
+          {{ capabilitiesError }}
+        </v-alert>
+
         <template v-else>
           <!-- Seconda riga: Blocco contenuto sottostante -->
 
@@ -113,6 +122,32 @@
               />
             </v-window-item>
 
+            <v-window-item value="accessibility_declaration">
+              <PolicySettingsCard
+                :policy-page="accessibilityDeclarationPage"
+                :policy-pages="policyPages"
+                policy-type="accessibility_declaration"
+                :policy-url="accessibilityDeclarationUrl"
+                :shortcode="accessibilityDeclarationShortcode"
+                title="Impostazioni della dichiarazione di accessibilità"
+                :use-html-snippet="useAccessibilityDeclarationHtmlSnippet"
+                @page-updated="handlePageUpdated"
+                @save="saveAccessibilityDeclarationSettings"
+                @update:policy-page="accessibilityDeclarationPage = $event"
+                @update:use-html-snippet="useAccessibilityDeclarationHtmlSnippet = $event"
+              />
+            </v-window-item>
+
+            <v-window-item value="accessibility_widget">
+              <AccessibilityWidgetSettingsCard
+                :local-enabled="pendingAccessibilityWidgetEnabled"
+                :saving="store.getIsSavingAccessibilityWidgetToggle"
+                :widget="store.accessibilityWidget"
+                @save="saveAccessibilityWidgetSettings"
+                @update:enabled="pendingAccessibilityWidgetEnabled = $event"
+              />
+            </v-window-item>
+
             <v-window-item value="cache">
               <CacheSettingsCard
                 :cache-duration="cacheDuration"
@@ -161,6 +196,7 @@
 
   const branding = computed(() => store.getBranding)
   const serviceStatusError = computed(() => store.getError)
+  const capabilitiesError = computed(() => store.getCapabilitiesError)
   const selectedLanguage = computed(() => store.getSelectedLanguage)
   const cookiePolicyUrl = computed(() => {
     const document = store.getDocument('cookie_policy')
@@ -173,6 +209,11 @@
   const cgvPolicyUrl = computed(() => {
     const document = store.getDocument('terms_of_service')
     return document?.languages?.[selectedLanguage.value]?.url.html || ''
+  })
+  const accessibilityDeclarationUrl = computed(() => {
+    const declaration = store.getAccessibilityDeclaration
+    if (!declaration?.available || !declaration.document) return ''
+    return declaration.document.languages?.[selectedLanguage.value]?.url.html || ''
   })
 
   const snackbar = ref({
@@ -215,17 +256,41 @@
     { label: 'Cookie policy', value: 'cookie_policy' },
     { label: 'Privacy policy', value: 'privacy_policy' },
     { label: 'Informativa CGV', value: 'terms_of_service' },
+    { label: 'Dichiarazione accessibilità', value: 'accessibility_declaration' },
+    { label: 'Widget accessibilità', value: 'accessibility_widget' },
     { label: 'Cache', value: 'cache' },
   ]
 
+  // S#7701 capability-driven gating: tab visibility derives from
+  // `store.capabilities` (resolved post-auth via `loadCapabilities`), not from
+  // the GDPR document whitelist. Accessibility tabs land in follow-up PRs and
+  // are gated on `features.accessibilityDeclaration` / `accessibilityWidget`.
   const tabs = computed(() => {
     return allTabs.filter(tab => {
-      if (tab.value === 'cookie_banner' || tab.value === 'cache') {
+      if (tab.value === 'cache') {
         return true
       }
 
-      const document = store.getDocument(tab.value as any)
-      return document !== null
+      if (tab.value === 'cookie_banner') {
+        return store.isGdprEnabled
+      }
+
+      if (tab.value === 'cookie_policy' || tab.value === 'privacy_policy' || tab.value === 'terms_of_service') {
+        if (!store.isGdprEnabled) {
+          return false
+        }
+        return store.getDocument(tab.value as any) !== null
+      }
+
+      if (tab.value === 'accessibility_declaration') {
+        return store.isAccessibilityDeclarationEnabled
+      }
+
+      if (tab.value === 'accessibility_widget') {
+        return store.isAccessibilityWidgetEnabled
+      }
+
+      return false
     })
   })
 
@@ -249,6 +314,19 @@
   const cgvPolicyPage = ref<string | null>(null)
   const cgvShortcode = '[LBFA_CGV_POLICY]'
 
+  const useAccessibilityDeclarationHtmlSnippet = ref(false)
+  const accessibilityDeclarationPage = ref<string | null>(null)
+  const accessibilityDeclarationShortcode = '[LBFA_ACCESSIBILITY_DECLARATION]'
+
+  // Pending toggle state for the accessibility widget. Bound to the switch
+  // in AccessibilityWidgetSettingsCard so flipping it does NOT persist
+  // anything until the user clicks "Salva". Kept in sync with the store
+  // whenever the loaded widget payload updates.
+  const pendingAccessibilityWidgetEnabled = ref(false)
+  watchEffect(() => {
+    pendingAccessibilityWidgetEnabled.value = store.accessibilityWidget?.localEnabled ?? false
+  })
+
   const cacheDuration = computed({
     get: () => store.cacheSettings.cache_duration || 30,
     set: value => store.cacheSettings.cache_duration = value,
@@ -264,6 +342,20 @@
 
   function saveCgvPolicySettings () {
     showMessage('Impostazioni CGV salvate!')
+  }
+
+  function saveAccessibilityDeclarationSettings () {
+    showMessage('Impostazioni dichiarazione di accessibilità salvate!')
+  }
+
+  async function saveAccessibilityWidgetSettings () {
+    try {
+      await store.saveAccessibilityWidgetToggle(pendingAccessibilityWidgetEnabled.value)
+      showMessage('Impostazioni widget di accessibilità salvate!')
+    } catch (error) {
+      console.error('Errore salvataggio widget accessibilità:', error)
+      showMessage('Errore nel salvataggio delle impostazioni widget di accessibilità', 'error')
+    }
   }
 
   async function saveCacheSettings () {
@@ -287,6 +379,10 @@
       const response = await cacheService.clearCache()
       if (response.success) {
         showMessage(response.message || 'Cache eliminata!', 'info')
+        // After clearing the plugin transients, re-run the full bootstrap so
+        // capability + GDPR docs + accessibility declaration/widget reflect
+        // the freshly fetched payloads instead of the stale in-store copy.
+        await store.setAuthenticated(true)
       } else {
         showMessage(response.errors?.[0] || 'Errore nella pulizia della cache', 'error')
       }
@@ -334,6 +430,14 @@
     if (cgvDoc?.languages?.[currentLanguage]) {
       cgvPolicyPage.value = cgvDoc.languages[currentLanguage].pageId
       useCgvHtmlSnippet.value = cgvDoc.languages[currentLanguage].useHtmlSnippet
+    }
+
+    // Accessibility declaration (S#7701 mixed-mode)
+    const declaration = store.getAccessibilityDeclaration
+    const declarationLang = declaration?.document?.languages?.[currentLanguage]
+    if (declarationLang) {
+      accessibilityDeclarationPage.value = declarationLang.pageId
+      useAccessibilityDeclarationHtmlSnippet.value = declarationLang.useHtmlSnippet
     }
   })
 </script>

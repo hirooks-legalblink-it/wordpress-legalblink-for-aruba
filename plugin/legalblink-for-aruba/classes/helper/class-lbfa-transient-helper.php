@@ -219,7 +219,8 @@ if ( ! class_exists( 'LBFA_Transient_Helper' ) ) {
          */
         public static function clearAll()
         {
-            // Iterate over the registry and delete keys using WP APIs (no direct DB queries)
+            // Primary path: iterate over the registry and delete each key via
+            // the WP transient API.
             $registry = self::get_registry();
             if (is_array($registry) && ! empty($registry)) {
                 foreach (array_keys($registry) as $prefixed_key) {
@@ -230,6 +231,42 @@ if ( ! class_exists( 'LBFA_Transient_Helper' ) ) {
                     }
                 }
             }
+
+            // Fallback path: clear every option matching `_transient_lbfa_*`
+            // and `_transient_timeout_lbfa_*` (and the site_transient/sitemeta
+            // counterparts on multisite) directly via wpdb. This catches keys
+            // that bypassed `register_key()` — e.g. legacy entries written
+            // before the registry existed, or entries written from a code
+            // path that called `set_transient` directly.
+            global $wpdb;
+            if (isset($wpdb)) {
+                if (self::is_network_context() && isset($wpdb->sitemeta)) {
+                    $wpdb->query(
+                        $wpdb->prepare(
+                            "DELETE FROM {$wpdb->sitemeta} WHERE meta_key LIKE %s OR meta_key LIKE %s",
+                            '\\_site\\_transient\\_' . self::TRANSIENT_PREFIX . '%',
+                            '\\_site\\_transient\\_timeout\\_' . self::TRANSIENT_PREFIX . '%'
+                        )
+                    );
+                } else {
+                    $wpdb->query(
+                        $wpdb->prepare(
+                            "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
+                            '\\_transient\\_' . self::TRANSIENT_PREFIX . '%',
+                            '\\_transient\\_timeout\\_' . self::TRANSIENT_PREFIX . '%'
+                        )
+                    );
+                }
+
+                // Flush any external object cache so the wpdb delete is visible
+                // on the next read (Redis / Memcached / LiteSpeed all cache
+                // transients separately from the options table).
+                if (function_exists('wp_cache_flush_group')) {
+                    @wp_cache_flush_group('transient');
+                    @wp_cache_flush_group('site-transient');
+                }
+            }
+
             // Reset registry
             self::save_registry(array());
         }
