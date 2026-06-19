@@ -32,6 +32,14 @@ input[type="text"] {
   line-height: inherit !important;*/
 }
 
+input[type=checkbox] {
+  box-shadow: inherit !important;
+  border: inherit !important;
+  border-radius: inherit !important;
+  background-color: inherit !important;
+  color: inherit !important;
+}
+
 .v-text-field .v-input__details {
    padding-inline: 0 !important;
 }
