@@ -41,6 +41,31 @@
               In questo modo potrai aggiungere sul tuo sito web i documenti legali creati.
             </p>
 
+            <!-- CTA BLOCCO: Token non posseduto — link a LegalBlink per Aruba -->
+            <v-alert
+              class="mb-6"
+              color="primary"
+              icon="mdi-information-outline"
+              variant="tonal"
+            >
+              <template #title>
+                Non hai ancora il token LegalBlink?
+              </template>
+              <p class="text-body-2 mb-3">
+                Per utilizzare il plugin devi prima accedere alla pagina LegalBlink per Aruba, completare i dati richiesti e generare il token WordPress dalla sezione "Impostazioni". Una volta generato, copia il token e incollalo qui per collegare il plugin al tuo account LegalBlink.
+              </p>
+              <v-btn
+                color="primary"
+                href="https://hosting.aruba.it/legalblink.aspx"
+                size="large"
+                target="_blank"
+                variant="flat"
+              >
+                Vai a LegalBlink per Aruba
+                <v-icon end>mdi-open-in-new</v-icon>
+              </v-btn>
+            </v-alert>
+
             <v-form @submit.prevent="handleLogin">
               <v-text-field
                 v-model="externalId"

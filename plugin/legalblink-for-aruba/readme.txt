@@ -4,7 +4,7 @@ Tags: gdpr, privacy, cookie, policy, compliance
 Requires at least: 6.0
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.1.6
+Stable tag: 1.1.7
 License: GPLv3 or later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -103,30 +103,32 @@ Yes, it can be configured for every site.
 
 == Changelog ==
 
-= 1.0.0 =
-* Initial plugin release.
-= 1.0.1 =
-- Removed inline `<style>` blocks from embedded HTML documents to prevent layout conflicts with WordPress themes
-- Cache is now automatically invalidated after plugin updates
-= 1.0.2 =
+= 1.1.7 =
+- Added call to action on the token login screen to guide users on how to generate a token via the Aruba hosting panel.
+= 1.1.6 =
 - Minor fixes
+= 1.1.5 =
+- Minor fixes
+= 1.1.4 =
+- Improved: empty paragraphs and paragraphs containing only line breaks are removed from documents embedded in HTML mode, for a cleaner layout
+= 1.1.3 =
+- Fixed: stray JavaScript snippets no longer appear as text when embedding a document in HTML mode
+= 1.1.2 =
+- Fixed: language switching and other parameterized actions on "Plain" permalinks
+= 1.1.1 =
+- Fixed: the plugin admin now works on sites using "Plain" permalinks
 = 1.1.0 =
 - New: "Accessibility Declaration" tab to embed the accessibility declaration document in a WordPress page, with iframe / HTML snippet modes consistent with the existing GDPR documents
 - New: "Accessibility Widget" tab with read-only widget status, snippet preview, and local toggle to inject the widget snippet on the public site
 - New: Cookie Banner v2 support (Consent Mode V2 / IAB TCF) — automatically used when the active plan advertises it, with transparent fallback to the legacy banner otherwise
 - Improved: cache invalidation also wipes orphan transients via a wpdb fallback (previously some transients survived "Clear cache" until natural expiration)
-= 1.1.1 =
-- Fixed: the plugin admin now works on sites using "Plain" permalinks
-= 1.1.2 =
-- Fixed: language switching and other parameterized actions on "Plain" permalinks
-= 1.1.3 =
-- Fixed: stray JavaScript snippets no longer appear as text when embedding a document in HTML mode
-= 1.1.4 =
-- Improved: empty paragraphs and paragraphs containing only line breaks are removed from documents embedded in HTML mode, for a cleaner layout
-= 1.1.5 =
+= 1.0.2 =
 - Minor fixes
-= 1.1.6 =
-- Minor fixes
+= 1.0.1 =
+- Removed inline `<style>` blocks from embedded HTML documents to prevent layout conflicts with WordPress themes
+- Cache is now automatically invalidated after plugin updates
+= 1.0.0 =
+* Initial plugin release.
 
 == Upgrade Notice ==
 

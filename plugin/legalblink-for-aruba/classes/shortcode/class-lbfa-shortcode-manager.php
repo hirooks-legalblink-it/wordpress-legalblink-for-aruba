@@ -36,9 +36,9 @@ if ( ! class_exists( 'LBFA_Shortcode_Manager' ) ) {
             // Initialize all shortcode classes (loaded by composer classmap;
             // the require_once below is defensive in case autoload is missing).
             $shortcode_classes = array(
-                'LBFA_Cookie_Policy_Shortcode' => 'class-alb-cookie-policy-shortcode.php',
-                'LBFA_Privacy_Policy_Shortcode' => 'class-alb-privacy-policy-shortcode.php',
-                'LBFA_CGV_Policy_Shortcode' => 'class-alb-cgv-policy-shortcode.php',
+                'LBFA_Cookie_Policy_Shortcode' => 'class-lbfa-cookie-policy-shortcode.php',
+                'LBFA_Privacy_Policy_Shortcode' => 'class-lbfa-privacy-policy-shortcode.php',
+                'LBFA_CGV_Policy_Shortcode' => 'class-lbfa-cgv-policy-shortcode.php',
                 'LBFA_Accessibility_Declaration_Shortcode' => 'class-lbfa-accessibility-declaration-shortcode.php',
             );
 
