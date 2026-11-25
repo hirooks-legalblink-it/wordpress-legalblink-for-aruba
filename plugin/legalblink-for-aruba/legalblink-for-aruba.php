@@ -76,7 +76,8 @@ function lbfa_add_type_attribute( array $attr )
 {
     $scripts_type_module = ['lbfa_admin-ui-main-script-js'];
 
-    if (in_array($attr['id'], $scripts_type_module, true)) {
+    // The filter runs for every script tag: `id` is not guaranteed (S#8016).
+    if (isset($attr['id']) && in_array($attr['id'], $scripts_type_module, true)) {
         $attr['type'] = 'module';
     }
 
