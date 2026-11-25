@@ -107,6 +107,7 @@ Yes, it can be configured for every site.
 - Tested with WordPress 7.0
 - Fixed: PHP 8 warning "Array to string conversion" when loading the plan capabilities
 - Fixed: PHP warning "Undefined array key" for scripts printed without an id (e.g. WordPress 7.1 admin pages)
+- Fixed: sites using the Consent Mode (v2) cookie banner showed the legacy banner after the plan cache expired or after an update, until the plugin panel was opened
 = 1.1.7 =
 - Added call to action on the token login screen to guide users on how to generate a token via the Aruba hosting panel.
 = 1.1.6 =

@@ -126,6 +126,10 @@ class FrontendManagerRenderTest extends TestCase
             'jwt_token' => 'jwt',
             'cache_duration' => 1,
         ];
+        // Plan without the v2 banner.
+        LBFA_Transient_Helper::$__cache['capabilities'] = [
+            'features' => ['cookieBannerV2' => false],
+        ];
 
         Functions\expect('wp_remote_get')
             ->once()
@@ -167,9 +171,72 @@ class FrontendManagerRenderTest extends TestCase
         $this->assertArrayNotHasKey('cookie_banner_snippet', LBFA_Transient_Helper::$__cache);
     }
 
+    /**
+     * S#7920 (T12): with the capabilities cache expired the v2 snippet must
+     * still be served; before, the site switched to the legacy banner.
+     */
+    public function testRenderCookieBannerKeepsV2AfterCapabilitiesCacheExpiry(): void
+    {
+        LBFA_Option_Helper::$__options = [
+            'cookie_banner_enabled' => true,
+            'jwt_token' => 'jwt',
+            'cache_duration' => 1,
+        ];
+        LBFA_Transient_Helper::$__cache['cookie_banner_snippet_v2'] = '<script>cached-v2</script>';
+
+        Functions\expect('wp_remote_get')
+            ->once()
+            ->with('https://backend.example.test/integrations/wordpress/capabilities', Mockery::type('array'))
+            ->andReturn([
+                'response' => ['code' => 200],
+                'body' => json_encode(['mode' => 'gdpr-only', 'features' => ['cookieBannerV2' => true]]),
+            ]);
+
+        $output = $this->captureRender(fn () => $this->makeManager()->render_cookie_banner());
+
+        $this->assertSame('<script>cached-v2</script>', $output);
+        $this->assertArrayNotHasKey('cookie_banner_snippet', LBFA_Transient_Helper::$__cache);
+    }
+
+    /**
+     * S#7920: while the plan is unknown (backend down, backoff active) a v2
+     * site keeps its cached v2 banner and makes no backend call per page view.
+     */
+    public function testRenderCookieBannerServesCachedV2DuringBackoffWithoutBackendCalls(): void
+    {
+        LBFA_Option_Helper::$__options = ['cookie_banner_enabled' => true, 'jwt_token' => 'jwt', 'cache_duration' => 1];
+        LBFA_Transient_Helper::$__cache['capabilities_fetch_backoff'] = 1;
+        LBFA_Transient_Helper::$__cache['cookie_banner_snippet_v2'] = '<script>cached-v2</script>';
+
+        Functions\expect('wp_remote_get')->never();
+
+        $output = $this->captureRender(fn () => $this->makeManager()->render_cookie_banner());
+        $this->assertSame('<script>cached-v2</script>', $output);
+    }
+
+    /**
+     * Plan unknown and no banner cached at all: as before this fix, the legacy
+     * banner is requested.
+     */
+    public function testRenderCookieBannerFetchesLegacyWhenPlanUnknownAndNothingCached(): void
+    {
+        LBFA_Option_Helper::$__options = ['cookie_banner_enabled' => true, 'jwt_token' => 'jwt', 'cache_duration' => 1];
+        LBFA_Transient_Helper::$__cache['capabilities_fetch_backoff'] = 1;
+
+        Functions\expect('wp_remote_get')
+            ->once()
+            ->with('https://backend.example.test/integrations/wordpress/cookie-solution/embed?language=it', Mockery::type('array'))
+            ->andReturn(['response' => ['code' => 200], 'body' => json_encode(['html' => '<script>fetched-v1</script>'])]);
+
+        $output = $this->captureRender(fn () => $this->makeManager()->render_cookie_banner());
+        $this->assertSame('<script>fetched-v1</script>', $output);
+    }
+
     public function testFetchBannerSnippetWith5xxReturnsEmpty(): void
     {
         LBFA_Option_Helper::$__options['jwt_token'] = 'jwt';
+        // Plan without the v2 banner: only the snippet request reaches the backend.
+        LBFA_Transient_Helper::$__cache['capabilities'] = ['features' => ['cookieBannerV2' => false]];
 
         Functions\expect('wp_remote_get')
             ->once()
@@ -181,6 +248,8 @@ class FrontendManagerRenderTest extends TestCase
     public function testFetchBannerSnippetWithWpErrorReturnsEmpty(): void
     {
         LBFA_Option_Helper::$__options['jwt_token'] = 'jwt';
+        // Plan without the v2 banner: only the snippet request reaches the backend.
+        LBFA_Transient_Helper::$__cache['capabilities'] = ['features' => ['cookieBannerV2' => false]];
 
         Functions\expect('wp_remote_get')
             ->once()
