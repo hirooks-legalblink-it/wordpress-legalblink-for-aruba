@@ -24,6 +24,28 @@ if (!class_exists('LBFA_Capability_API_Controller')) {
         const CACHE_KEY = 'capabilities';
 
         /**
+         * Cache used by get_cached_or_fetch() for the public site. It is kept
+         * apart from CACHE_KEY so an answer fetched without an admin session
+         * (e.g. mode "none" for a revoked token) never reaches the panel.
+         */
+        const PUBLIC_CACHE_KEY = 'capabilities_public';
+
+        /**
+         * Marker that keeps get_cached_or_fetch() from calling the backend:
+         * set while a fetch is in progress (concurrent page views keep the
+         * cached banner) and after a failure, so an outage does not add a
+         * request to every public page view.
+         */
+        const FETCH_BACKOFF_KEY = 'capabilities_fetch_backoff';
+        const FETCH_IN_PROGRESS_SECONDS = 60;
+        const FETCH_BACKOFF_SECONDS = 300;
+
+        /**
+         * Short timeout: the fetch runs during a public page view.
+         */
+        const FETCH_TIMEOUT_SECONDS = 5;
+
+        /**
          * Check whether a feature flag is enabled in the cached capabilities.
          *
          * Returns false when capabilities haven't been resolved yet (e.g. the
@@ -38,6 +60,58 @@ if (!class_exists('LBFA_Capability_API_Controller')) {
                 return false;
             }
             return (bool) $capabilities['features'][$feature];
+        }
+
+        /**
+         * Capabilities for callers outside the admin panel, such as the public
+         * site (S#7920). Reading the panel's cache alone made the site fall
+         * back to the legacy cookie banner once that cache expired (1 hour) or
+         * was cleared by a plugin update, until an admin reopened the panel.
+         *
+         * Reads the panel's cache, then PUBLIC_CACHE_KEY, and on a miss fetches
+         * the capabilities and stores them in PUBLIC_CACHE_KEY only. Returns
+         * null when they are unknown: no session, a fetch in progress, or a
+         * failure in the last FETCH_BACKOFF_SECONDS.
+         *
+         * @return array|null Normalized capabilities, or null when unknown.
+         */
+        public static function get_cached_or_fetch()
+        {
+            foreach (array(self::CACHE_KEY, self::PUBLIC_CACHE_KEY) as $key) {
+                $cached = LBFA_Transient_Helper::get($key);
+                if (is_array($cached)) {
+                    return $cached;
+                }
+            }
+
+            $jwt_token = LBFA_Option_Helper::getOption('jwt_token');
+            if (empty($jwt_token) || LBFA_Transient_Helper::get(self::FETCH_BACKOFF_KEY) !== false) {
+                return null;
+            }
+
+            LBFA_Transient_Helper::set(self::FETCH_BACKOFF_KEY, 1, self::FETCH_IN_PROGRESS_SECONDS);
+            $response = wp_remote_get(self::get_api_base_url() . '/capabilities', array(
+                'headers' => array(
+                    'Content-Type' => 'application/json',
+                    'Authorization' => 'Bearer ' . $jwt_token,
+                ),
+                'timeout' => self::FETCH_TIMEOUT_SECONDS,
+            ));
+            $payload = is_wp_error($response) ? null : json_decode(wp_remote_retrieve_body($response), true);
+
+            if (!is_array($payload) || wp_remote_retrieve_response_code($response) !== 200) {
+                $reason = is_wp_error($response)
+                    ? $response->get_error_message()
+                    : 'HTTP ' . wp_remote_retrieve_response_code($response);
+                LBFA_Logger::warning('Capabilities fetch for the public site failed: ' . $reason, LBFA_Logger::CATEGORY_API, 'get_cached_or_fetch');
+                LBFA_Transient_Helper::set(self::FETCH_BACKOFF_KEY, 1, self::FETCH_BACKOFF_SECONDS);
+                return null;
+            }
+
+            $normalized = (new self())->normalize_capabilities($payload);
+            LBFA_Transient_Helper::set(self::PUBLIC_CACHE_KEY, $normalized, max(60, self::get_api_cache_time()));
+            LBFA_Transient_Helper::delete(self::FETCH_BACKOFF_KEY);
+            return $normalized;
         }
 
         public function register_routes()
@@ -162,11 +236,36 @@ if (!class_exists('LBFA_Capability_API_Controller')) {
                     'accessibilityWidgetConfigured' => (bool) ($resources['accessibilityWidgetConfigured'] ?? false),
                 ),
                 'warnings' => array(
-                    'accessibilityWidget' => isset($warnings['accessibilityWidget']) && $warnings['accessibilityWidget'] !== ''
-                        ? (string) $warnings['accessibilityWidget']
-                        : null,
+                    'accessibilityWidget' => self::normalize_widget_warning($warnings['accessibilityWidget'] ?? null),
                 ),
             );
+        }
+
+        /**
+         * The backend sends the widget warning either as a string or as a list
+         * of strings (`[]` when there is nothing to report). Keep the single
+         * string contract of the admin UI: first non-empty string, or null.
+         * Casting the list to string raised "Array to string conversion" on PHP 8.
+         *
+         * @param mixed $warning
+         * @return string|null
+         */
+        private static function normalize_widget_warning($warning)
+        {
+            if (is_array($warning)) {
+                foreach ($warning as $item) {
+                    if (is_string($item) && $item !== '') {
+                        return $item;
+                    }
+                }
+                return null;
+            }
+
+            if ($warning === null || $warning === '') {
+                return null;
+            }
+
+            return (string) $warning;
         }
     }
 }

@@ -158,6 +158,31 @@ class CapabilityApiControllerTest extends TestCase
         $this->assertSame('configuration_expired', $normalized['warnings']['accessibilityWidget']);
     }
 
+    /**
+     * S#7920: the backend sends `warnings.accessibilityWidget` as a list
+     * (`[]` when there is nothing to report). Casting it to string raised
+     * "Array to string conversion" on PHP 8 at every capabilities refresh.
+     */
+    public function testNormalizeCapabilitiesTreatsEmptyWidgetWarningListAsNoWarning(): void
+    {
+        $normalized = (new LBFA_Capability_API_Controller())->normalize_capabilities([
+            'mode' => 'gdpr-only',
+            'warnings' => ['accessibilityDeclaration' => [], 'accessibilityWidget' => []],
+        ]);
+
+        $this->assertNull($normalized['warnings']['accessibilityWidget']);
+    }
+
+    public function testNormalizeCapabilitiesKeepsFirstWarningFromWidgetWarningList(): void
+    {
+        $normalized = (new LBFA_Capability_API_Controller())->normalize_capabilities([
+            'mode' => 'hybrid',
+            'warnings' => ['accessibilityWidget' => ['configuration_expired', 'domain_mismatch']],
+        ]);
+
+        $this->assertSame('configuration_expired', $normalized['warnings']['accessibilityWidget']);
+    }
+
     private function normalizedFixture(): array
     {
         return [

@@ -2,9 +2,9 @@
 Contributors: legalblink, arubait, arubasupport
 Tags: gdpr, privacy, cookie, policy, compliance
 Requires at least: 6.0
-Tested up to: 6.9
+Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.1.7
+Stable tag: 1.1.8
 License: GPLv3 or later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -103,6 +103,11 @@ Yes, it can be configured for every site.
 
 == Changelog ==
 
+= 1.1.8 =
+- Tested with WordPress 7.0 and 7.1
+- Fixed: PHP 8 warning "Array to string conversion" when loading the plan capabilities
+- Fixed: PHP warning "Undefined array key" for scripts printed without an id (e.g. WordPress 7.1 admin pages)
+- Fixed: sites using the Consent Mode (v2) cookie banner showed the legacy banner after the plan cache expired or after an update, until the plugin panel was opened
 = 1.1.7 =
 - Added call to action on the token login screen to guide users on how to generate a token via the Aruba hosting panel.
 = 1.1.6 =

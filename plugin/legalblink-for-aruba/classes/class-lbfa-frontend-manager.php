@@ -106,14 +106,26 @@ if ( ! class_exists( 'LBFA_Frontend_Manager' ) ) {
 
         /**
          * Decide whether to use the v2 cookie banner endpoint based on the
-         * cached capabilities. Falls back to false (legacy) when capabilities
-         * have not been resolved yet, so existing flows keep working before
-         * the admin opens the dashboard.
+         * plan capabilities, fetched again when the cache has expired (S#7920).
+         *
+         * While the plan is unknown (no session, backend unavailable or a
+         * fetch in progress) a cached v2 banner keeps being served instead of
+         * switching to the legacy one, which is not cached on v2 sites and
+         * would be requested on every page view. With no v2 banner cached the
+         * legacy banner is used, as before.
          */
         public static function should_use_banner_v2(): bool
         {
-            return class_exists('LBFA_Capability_API_Controller')
-                && LBFA_Capability_API_Controller::is_feature_enabled('cookieBannerV2');
+            if (!class_exists('LBFA_Capability_API_Controller')) {
+                return false;
+            }
+
+            $capabilities = LBFA_Capability_API_Controller::get_cached_or_fetch();
+            if (is_array($capabilities)) {
+                return !empty($capabilities['features']['cookieBannerV2']);
+            }
+
+            return LBFA_Transient_Helper::get('cookie_banner_snippet_v2') !== false;
         }
 
         public function fetch_banner_snippet($use_v2 = null)
