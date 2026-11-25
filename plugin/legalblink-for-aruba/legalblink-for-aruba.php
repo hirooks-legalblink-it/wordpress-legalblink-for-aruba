@@ -3,13 +3,13 @@
  * Plugin Name: LegalBlink for Aruba
  * Plugin URI: https://wordpress.org/plugins/legalblink-for-aruba/
  * Description: Integrate LegalBlink services from Aruba in your WordPress site. Generate GDPR-compliant legal documents including Privacy Policy, Cookie Policy, and Terms & Conditions with professional legal support.
- * Version: 1.1.7
+ * Version: 1.1.8
  * Author: LegalBlink
  * Author URI: https://legalblink.it/
  * Text Domain: legalblink-for-aruba
  * Domain Path: /languages
  * Requires at least: 6.0
- * Tested up to: 6.9
+ * Tested up to: 7.0
  * Requires PHP: 7.4
  * License: GPL v3 or later
  * License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -39,7 +39,7 @@ if (!defined('LBFA_PLUGIN_DIR')) {
     define('LBFA_PLUGIN_DIR', plugin_dir_path(__FILE__));
 }
 if (!defined('LBFA_PLUGIN_VERSION')) {
-    define('LBFA_PLUGIN_VERSION', '1.1.7');
+    define('LBFA_PLUGIN_VERSION', '1.1.8');
 }
 
 require_once __DIR__ . '/vendor/autoload.php';
@@ -106,7 +106,7 @@ function lbfa_enqueue_admin_assets()
         'editPagesUrl' => admin_url('edit.php?post_type=page'),
     ];
     $admin_ui_url = plugin_dir_url(__FILE__) . 'assets/admin-ui/';
-    $version = '1.1.7';
+    $version = '1.1.8';
 
     wp_enqueue_style(
         'lbfa_admin-ui-main-style',
