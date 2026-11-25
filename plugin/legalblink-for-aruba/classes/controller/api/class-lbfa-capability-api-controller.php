@@ -162,11 +162,36 @@ if (!class_exists('LBFA_Capability_API_Controller')) {
                     'accessibilityWidgetConfigured' => (bool) ($resources['accessibilityWidgetConfigured'] ?? false),
                 ),
                 'warnings' => array(
-                    'accessibilityWidget' => isset($warnings['accessibilityWidget']) && $warnings['accessibilityWidget'] !== ''
-                        ? (string) $warnings['accessibilityWidget']
-                        : null,
+                    'accessibilityWidget' => self::normalize_widget_warning($warnings['accessibilityWidget'] ?? null),
                 ),
             );
+        }
+
+        /**
+         * The backend sends the widget warning either as a string or as a list
+         * of strings (`[]` when there is nothing to report). Keep the single
+         * string contract of the admin UI: first non-empty string, or null.
+         * Casting the list to string raised "Array to string conversion" on PHP 8.
+         *
+         * @param mixed $warning
+         * @return string|null
+         */
+        private static function normalize_widget_warning($warning)
+        {
+            if (is_array($warning)) {
+                foreach ($warning as $item) {
+                    if (is_string($item) && $item !== '') {
+                        return $item;
+                    }
+                }
+                return null;
+            }
+
+            if ($warning === null || $warning === '') {
+                return null;
+            }
+
+            return (string) $warning;
         }
     }
 }
